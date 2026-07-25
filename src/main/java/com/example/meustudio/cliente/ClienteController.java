@@ -13,9 +13,7 @@ public class ClienteController {
 
     private final ClienteService clienteService;
 
-    public ClienteController(ClienteService clienteService) {
-        this.clienteService = clienteService;
-    }
+    public ClienteController(ClienteService clienteService) {this.clienteService = clienteService;}
 
     @GetMapping
     public List<ClienteResponse> listar() {

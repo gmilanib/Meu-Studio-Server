@@ -2,21 +2,25 @@ package com.example.meustudio.Auth;
 
 import ch.qos.logback.classic.pattern.ClassOfCallerConverter;
 import jakarta.persistence.*;
-import org.hibernate.validator.constraints.UUID;
-
-import java.time.LocalDate;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name ="users")
+@NoArgsConstructor
+@AllArgsConstructor
 public class User {
 
 @Id
-@GeneratedValue(strategy = GenerationType.IDENTITY)
+@GeneratedValue(strategy = GenerationType.UUID)
 private UUID id;
 
-@Column
-    private String username;
+@Column (unique = true)
+private String username;
 @Column
 private String password;
 @Column
@@ -38,5 +42,41 @@ private LocalDateTime atualizadoEm;
     this.atualizadoEm = now;
 }
 
+@PreUpdate
+    public void preUpdate(){
+    LocalDateTime now = LocalDateTime.now();
+    this.atualizadoEm = now;
+}
 
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public void setTelefone(String telefone) {
+        this.telefone = telefone;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
 }
