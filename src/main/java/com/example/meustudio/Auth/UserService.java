@@ -20,7 +20,7 @@ public class UserService {
         User user = new User();
         user.setUsername(userRequest.username());
         user.setPassword(userRequest.password());
-//        user.setEmail(UserRequest.email());
+        user.setEmail(userRequest.email());
 //        user.setTelefone(UserRequest.telefone());
         return UserResponse.fromEntity(userRepository.save(user));
     }

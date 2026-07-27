@@ -20,7 +20,4 @@ public class UserController {
         UserResponse response = userService.criar(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
-
-
-
 }
