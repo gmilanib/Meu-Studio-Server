@@ -1,4 +1,4 @@
-package com.example.meustudio.Auth;
+package com.example.meustudio.auth;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -15,5 +15,8 @@ public record UserRequest(
 
     @NotBlank(message =" E-mail é obrigatório")
     @Email
-    String email
+    String email,
+
+    @NotBlank(message = "Telefone é obrigatorio")
+    String telefone
 ){}

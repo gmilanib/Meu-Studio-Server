@@ -1,8 +1,7 @@
-package com.example.meustudio.Auth;
+package com.example.meustudio.auth;
 
-import org.hibernate.validator.constraints.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
-
+import java.util.UUID;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, UUID> {
