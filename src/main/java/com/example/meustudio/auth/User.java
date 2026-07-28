@@ -1,11 +1,9 @@
-package com.example.meustudio.Auth;
+package com.example.meustudio.auth;
 
-import ch.qos.logback.classic.pattern.ClassOfCallerConverter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -40,7 +38,9 @@ private LocalDateTime atualizadoEm;
     LocalDateTime now = LocalDateTime.now();
     this.criadoEm = now;
     this.atualizadoEm = now;
+    this.role = "USER";
 }
+
 
 @PreUpdate
     public void preUpdate(){
@@ -76,9 +76,7 @@ private LocalDateTime atualizadoEm;
         return username;
     }
 
-    public String getPassword() {
-        return password;
-    }
 
     public String getEmail(){return email;}
+
 }

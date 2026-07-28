@@ -1,7 +1,6 @@
-package com.example.meustudio.Auth;
+package com.example.meustudio.auth;
 
 
-import java.util.UUID;
 public record UserResponse(
         String username,
         String email

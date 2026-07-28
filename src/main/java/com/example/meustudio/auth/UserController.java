@@ -1,7 +1,5 @@
-package com.example.meustudio.Auth;
+package com.example.meustudio.auth;
 
-import com.example.meustudio.cliente.ClienteRequest;
-import com.example.meustudio.cliente.ClienteResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
