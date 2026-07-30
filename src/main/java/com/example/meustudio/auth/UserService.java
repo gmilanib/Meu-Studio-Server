@@ -1,20 +1,23 @@
 package com.example.meustudio.auth;
 
-import com.example.meustudio.config.Encoder;
-import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
+
+import com.example.meustudio.config.Encoder;
+
+import jakarta.transaction.Transactional;
 
 @Service
 public class UserService {
     private final UserRepository userRepository;
     private final Encoder encoder;
 
-    public UserService(UserRepository userRepository, Encoder encoder){
+    public UserService(UserRepository userRepository, Encoder encoder) {
         this.userRepository = userRepository;
-    this.encoder = encoder;}
+        this.encoder = encoder;
+    }
 
     @Transactional
-    public UserResponse criar (UserRequest userRequest){
+    public UserResponse criar(UserRequest userRequest) {
 
         String senhaHash = encoder.passwordEncoder().encode(userRequest.password());
 
@@ -24,6 +27,18 @@ public class UserService {
         user.setEmail(userRequest.email());
         user.setTelefone(userRequest.telefone());
 
+        return UserResponse.fromEntity(userRepository.save(user));
+    }
+
+    @Transactional
+    public UserResponse autenticar(UserRequest userRequest) {
+        User user = new User();
+
+        user.setUsername(userRequest.username());
+        user.setPassword(userRequest.password());
+
+        // Lembrar O que isso aqui retorna:
+        userRepository.findByUsername(user.getUsername());
 
         return UserResponse.fromEntity(userRepository.save(user));
     }
