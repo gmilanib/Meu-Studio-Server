@@ -1,7 +1,12 @@
 package com.example.meustudio.auth;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
+import com.example.meustudio.auth.CreateUser.CreateUserRequest;
+import com.example.meustudio.auth.CreateUser.CreateUserResponse;
+import com.example.meustudio.auth.Login.LoginRequest;
 import com.example.meustudio.config.Encoder;
 
 import jakarta.transaction.Transactional;
@@ -17,7 +22,7 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponse criar(UserRequest userRequest) {
+    public CreateUserResponse criar(CreateUserRequest userRequest) {
 
         String senhaHash = encoder.passwordEncoder().encode(userRequest.password());
 
@@ -27,20 +32,24 @@ public class UserService {
         user.setEmail(userRequest.email());
         user.setTelefone(userRequest.telefone());
 
-        return UserResponse.fromEntity(userRepository.save(user));
+        return CreateUserResponse.fromEntity(userRepository.save(user));
     }
 
     @Transactional
-    public UserResponse autenticar(UserRequest userRequest) {
-        User user = new User();
+    public User autenticar(LoginRequest userRequest) {
+        User user = userRepository.findByUsername(userRequest.username())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED, "User ou senha inválidos"));
 
-        user.setUsername(userRequest.username());
-        user.setPassword(userRequest.password());
+        boolean senhaCorreta = encoder.passwordEncoder()
+                .matches(userRequest.password(), user.getPassword());
 
-        // Lembrar O que isso aqui retorna:
-        userRepository.findByUsername(user.getUsername());
+        if (!senhaCorreta) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED, "User ou senha inválidos");
+        }
 
-        return UserResponse.fromEntity(userRepository.save(user));
+        return user;
     }
 
 }
