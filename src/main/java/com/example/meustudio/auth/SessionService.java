@@ -24,7 +24,7 @@ public class SessionService {
 
     public void iniciar(User user, HttpServletRequest request, HttpServletResponse response) {
         Authentication authentication = new UsernamePasswordAuthenticationToken(
-                user.getUsername(), null, List.of(new SimpleGrantedAuthority("ROLE_USER")));
+                user.getUsername(), null, List.of(new SimpleGrantedAuthority(user.getRole())));
 
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(authentication);

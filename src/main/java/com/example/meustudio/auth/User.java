@@ -44,7 +44,9 @@ public class User {
         LocalDateTime now = LocalDateTime.now();
         this.criadoEm = now;
         this.atualizadoEm = now;
-        this.role = "USER";
+        if (this.role == null || this.role.isBlank()) {
+            this.role = "USER";
+        }
     }
 
     @PreUpdate
@@ -87,6 +89,10 @@ public class User {
 
     public String getPassword() {
         return password;
+    }
+
+    public String getRole() {
+        return role;
     }
 
 }
