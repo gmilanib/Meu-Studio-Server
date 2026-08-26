@@ -37,7 +37,8 @@ public class SecurityConfig {
                                 .authorizeHttpRequests(auth -> auth
                                                 .requestMatchers("/auth/csrf").permitAll()
                                                 .requestMatchers("/auth/login").permitAll()
-                                                .requestMatchers(HttpMethod.POST, "/auth/CreateUser").hasRole("ADMIN")
+                                                .requestMatchers(HttpMethod.POST, "/auth/CreateUser")
+                                                .hasRole("ADMIN")
                                                 .anyRequest().authenticated());
 
                 return http.build();
