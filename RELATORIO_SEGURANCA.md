@@ -2,41 +2,48 @@
 
 **Projeto:** Meu Studio Server  
 **Data da avaliação:** 25 de agosto de 2026  
+**Última atualização:** 26 de agosto de 2026
 **Escopo:** código-fonte, configurações, migrations, dependências Maven, testes e histórico Git local.
 
 ## Resumo executivo
 
-O projeto ainda não está seguro para exposição pública. Foram identificadas uma falha crítica, duas falhas altas, riscos médios e lacunas de garantia por ausência de testes de segurança.
+As correções de maior urgência relacionadas ao cadastro público, aos papéis de usuário e às credenciais do banco foram concluídas. O risco crítico original foi reduzido, mas o projeto ainda possui pendências relevantes antes do deploy, principalmente autorização sobre clientes, fixação de sessão, bootstrap do primeiro administrador e proteção contra abuso dos endpoints públicos.
 
-Classificação resumida:
+Status atualizado das correções:
 
-| Severidade | Achado |
-|---|---|
-| Crítica | Cadastro público concede acesso irrestrito aos dados de todos os clientes |
-| Alta | Credenciais de banco permanecem recuperáveis no histórico Git |
-| Alta | Autenticação manual pode permitir fixação de sessão |
-| Média | Cadastro e login permitem esgotamento de CPU por ausência de rate limiting |
-| Média | Política de senha aceita senhas extremamente fracas |
-| Média | Dependências possuem correções de segurança disponíveis |
-| Baixa | Configuração CORS redundante e permissiva nos controllers |
-| Baixa | Possibilidade de enumeração de usuários por tempo de resposta |
-| Baixa | Observabilidade e testes de segurança insuficientes |
+| Estado | Severidade atual | Correção ou pendência |
+|---|---|---|
+| Concluído | — | Cadastro deixou de ser público e exige papel `ADMIN` |
+| Concluído | — | `User.prePersist()` preserva um papel previamente definido |
+| Concluído | — | A sessão converte o papel persistido para a autoridade `ROLE_<papel>` |
+| Concluído | — | Senha do banco rotacionada e usuário da aplicação sem privilégios administrativos |
+| Concluído | — | Credenciais removidas do histórico Git local e remoto |
+| Pendente | Alta | Autorização por papel, proprietário ou estúdio nos endpoints de clientes |
+| Pendente | Alta | Proteção contra fixação de sessão no login manual |
+| Pendente antes do deploy | Alta operacional | Bootstrap controlado do primeiro `ADMIN` em produção |
+| Pendente | Média | Rate limiting e proteção contra abuso no login |
+| Pendente | Média | Política de senha forte |
+| Pendente | Média | Atualização do Spring Boot e dependências transitivas |
+| Pendente | Baixa | Consolidação da configuração CORS |
+| Pendente | Baixa | Mitigação de enumeração de usuários |
+| Pendente | Baixa | Observabilidade e testes automatizados de segurança |
 
-## 1. Cadastro público com acesso total aos clientes
+## 1. Cadastro público corrigido; autorização de clientes pendente
 
-**Severidade: Crítica**
+**Status: Parcialmente concluído**
+**Severidade restante: Alta se usuários comuns não puderem administrar todos os clientes.**
 
 ### Evidências
 
-- [`SecurityConfig.java`](src/main/java/com/example/meustudio/config/SecurityConfig.java) libera todas as rotas que correspondem a `/auth/*` e exige apenas autenticação para as demais.
-- [`UserController.java`](src/main/java/com/example/meustudio/auth/UserController.java) disponibiliza publicamente `/auth/CreateUser`, `/auth/csrf` e `/auth/login`.
-- [`SessionService.java`](src/main/java/com/example/meustudio/auth/SessionService.java) concede `ROLE_USER` a todo usuário autenticado.
+- [`SecurityConfig.java`](src/main/java/com/example/meustudio/config/SecurityConfig.java) agora libera publicamente somente `/auth/csrf` e `/auth/login`; `POST /auth/CreateUser` exige `ROLE_ADMIN`.
+- [`SessionService.java`](src/main/java/com/example/meustudio/auth/SessionService.java) cria a autoridade a partir do papel persistido, usando o formato `ROLE_<papel>`.
+- [`User.java`](src/main/java/com/example/meustudio/auth/User.java) atribui `USER` somente quando o papel está ausente, preservando um `ADMIN` previamente definido.
 - [`ClienteController.java`](src/main/java/com/example/meustudio/cliente/ClienteController.java) permite listar, consultar, criar, atualizar e excluir clientes sem verificar papel, proprietário ou estúdio.
 - [`ClienteService.java`](src/main/java/com/example/meustudio/cliente/ClienteService.java) consulta os clientes globalmente, sem filtro por usuário ou tenant.
 
 ### Cenário de exploração
 
-Uma pessoa externa pode obter um token CSRF, criar uma conta, autenticar-se e acessar ou modificar todos os registros de clientes. CORS e CSRF não substituem autorização e não impedem um cliente HTTP controlado pelo atacante.
+O caminho de exploração por autocadastro foi fechado. Entretanto, qualquer conta autenticada criada pelo administrador ainda pode acessar ou modificar globalmente os registros de clientes. Se todas as contas pertencerem a um único estúdio e forem igualmente confiáveis, isso pode ser uma decisão de negócio; caso contrário, falta controle de acesso.
 
 ### Impacto
 
@@ -44,35 +51,33 @@ Exposição, alteração e exclusão de dados pessoais, incluindo nome, e-mail e
 
 ### Recomendação
 
-1. Definir se a criação de contas será administrativa, por convite ou realmente pública.
-2. Associar usuários e clientes a um estúdio ou proprietário, por exemplo, através de `studio_id`.
-3. Filtrar todas as consultas e mutações pelo estúdio do usuário autenticado.
-4. Definir papéis e permissões, como administrador, funcionário e leitura.
-5. Aplicar autorização tanto nos endpoints quanto na camada de serviço.
+1. Confirmar quais ações `ADMIN` e `USER` podem executar sobre clientes.
+2. Se houver mais de um estúdio, associar usuários e clientes através de `studio_id`.
+3. Filtrar consultas e mutações pelo estúdio ou proprietário autenticado.
+4. Aplicar autorização tanto nos endpoints quanto na camada de serviço.
 
 ## 2. Credenciais expostas no histórico Git
 
-**Severidade: Alta; Crítica se as credenciais ainda forem válidas e o repositório tiver sido compartilhado ou publicado.**
+**Status: Resolvido em 26 de agosto de 2026.**
 
 ### Evidências
 
-Versões antigas de `application.properties` e `application-local.properties` continham URL, usuário e senha do banco como valores literais. Esses dados aparecem em diversas revisões, incluindo `665e76b`, `4f715f4` e `0d4a161`, que continuam alcançáveis pelo histórico associado a `origin/master`.
+Versões antigas de `application.properties` e `application-local.properties` continham URL, usuário e senha do banco como valores literais.
 
-O estado atual está melhor protegido:
+As seguintes correções foram concluídas:
 
+- A senha exposta foi rotacionada e validada.
+- O usuário PostgreSQL da aplicação deixou de possuir privilégios administrativos.
 - [`.gitignore`](.gitignore) ignora `.env`.
 - O `.env` local possui permissão `600`.
 - [`application.properties`](src/main/resources/application.properties) usa `DB_URL`, `DB_USER` e `DB_PASSWORD` como variáveis de ambiente.
+- O histórico foi reescrito e publicado novamente no GitHub.
+- Um clone novo do remoto confirmou zero atribuições literais de credenciais e ausência de `.env` e `application-local.properties` no histórico.
+- A cópia local foi alinhada ao histórico limpo e os objetos antigos foram removidos.
 
-Entretanto, remover o segredo do estado atual não o remove dos commits antigos.
+### Prevenção restante
 
-### Recomendação
-
-1. Rotacionar imediatamente a senha e, preferencialmente, o usuário do banco.
-2. Revogar as credenciais antigas antes de limpar o histórico.
-3. Limpar os segredos do histórico Git e atualizar o repositório remoto.
-4. Orientar quem já clonou o repositório a substituir seus clones.
-5. Adicionar detecção de segredos ao processo de commit e CI.
+Adicionar detecção automática de segredos ao processo de commit e à CI.
 
 ## 3. Possível fixação de sessão
 
@@ -92,14 +97,14 @@ Preferir o fluxo padrão do Spring Security, usando `AuthenticationManager` e os
 
 Referência: [Session Management — Spring Security](https://docs.spring.io/spring-security/reference/7.0/servlet/authentication/session-management.html).
 
-## 4. Esgotamento de CPU em cadastro e login
+## 4. Esgotamento de CPU no login
 
 **Severidade: Média; pode tornar-se Alta quando a API estiver exposta diretamente à internet.**
 
 ### Evidências
 
 - [`Encoder.java`](src/main/java/com/example/meustudio/config/Encoder.java) configura BCrypt com custo 16.
-- Cadastro e login são públicos.
+- O login permanece público, como necessário para autenticação; o cadastro agora exige `ADMIN`.
 - Não foi encontrado rate limiting, backoff, bloqueio temporário ou limite global de concorrência.
 - A criação de usuário calcula o hash antes de tentar persistir o registro.
 
@@ -112,7 +117,6 @@ Um atacante pode automatizar solicitações e manter a CPU ocupada com operaçõ
 - Aplicar limites por IP e por nome de usuário.
 - Adotar backoff progressivo após falhas.
 - Limitar concorrência e tamanho dos corpos HTTP.
-- Avaliar convite ou CAPTCHA no cadastro público.
 - Medir o custo BCrypt no servidor de produção e escolher um valor que equilibre proteção e disponibilidade.
 
 ## 5. Política de senha fraca
@@ -182,7 +186,7 @@ Embora a mensagem de erro seja a mesma, o login de um usuário inexistente termi
 
 **Severidade: Baixa**
 
-[`application.properties`](src/main/resources/application.properties) define `logging.level.org.springframework.security=off`. Não foi encontrada auditoria específica para sucesso/falha de login, criação de contas ou operações destrutivas.
+[`application.properties`](src/main/resources/application.properties) permite configurar o nível de log do Spring Security através de `LOGLVL`. Não foi encontrada auditoria específica para sucesso/falha de login, criação de contas ou operações destrutivas.
 
 ### Recomendação
 
@@ -217,25 +221,23 @@ A compilação das classes estava atualizada, mas a suíte terminou com um erro 
 
 ## Ordem sugerida de correção
 
-1. Rotacionar as credenciais do banco expostas no Git.
-2. Fechar ou controlar o cadastro público.
-3. Implementar autorização por estúdio/proprietário e papéis.
-4. Corrigir o fluxo de autenticação e a rotação de sessão.
-5. Adicionar rate limiting e fortalecer a política de senha.
-6. Atualizar o Spring Boot e as dependências transitivas.
-7. Consolidar o CORS e configurar cookies/TLS de produção.
-8. Criar testes automatizados de segurança e observabilidade.
+1. Definir e implementar o bootstrap controlado do primeiro `ADMIN` em produção.
+2. Corrigir o fluxo de autenticação e a rotação do identificador de sessão.
+3. Definir e implementar autorização sobre clientes por papel, proprietário ou estúdio.
+4. Adicionar rate limiting e fortalecer a política de senha.
+5. Atualizar o Spring Boot e as dependências transitivas.
+6. Consolidar o CORS e configurar cookies/TLS de produção.
+7. Criar testes automatizados de segurança e observabilidade.
+8. Adicionar detecção automática de segredos aos commits e à CI.
 
 ## Limitações e decisões pendentes
 
-Esta foi uma análise estática e de dependências. A API não foi iniciada contra o banco real e não foi realizado teste de invasão dinâmico. A configuração externa de produção, rede, proxy, banco e infraestrutura não estava no repositório.
+Esta foi principalmente uma análise estática e de dependências. Posteriormente, a API foi iniciada com sucesso contra o PostgreSQL local, mas não foi realizado teste de invasão dinâmico. A configuração externa de produção, rede, proxy e infraestrutura não está no repositório.
 
 As seguintes decisões precisam ser confirmadas antes de definir a solução arquitetural:
 
-1. O cadastro de usuários deve ser público, administrativo ou por convite?
-2. Cada usuário deve visualizar todos os clientes ou somente clientes do seu estúdio?
-3. Existem papéis distintos, como administrador, recepcionista e profissional?
+1. Cada usuário deve visualizar todos os clientes ou somente clientes do seu estúdio?
+2. Quais operações sobre clientes devem ser exclusivas do `ADMIN`?
+3. Como o segredo temporário do bootstrap do primeiro `ADMIN` será fornecido e invalidado em produção?
 4. A API será publicada atrás de HTTPS e reverse proxy?
-5. As credenciais encontradas no histórico já foram rotacionadas?
-6. A conexão entre a aplicação e o PostgreSQL exige TLS e usa um usuário com privilégios mínimos?
-
+5. A conexão entre a aplicação e o PostgreSQL exigirá TLS em produção?
