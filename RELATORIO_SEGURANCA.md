@@ -1,4 +1,4 @@
-# Relatório de avaliação de segurança
+w# Relatório de avaliação de segurança
 
 **Projeto:** Meu Studio Server  
 **Data da avaliação:** 25 de agosto de 2026  
@@ -8,7 +8,7 @@
 
 ## Resumo executivo
 
-As correções de maior urgência relacionadas ao cadastro público, aos papéis de usuário, às credenciais do banco, à fixação de sessão e ao bootstrap do primeiro administrador foram concluídas. Para a fase 1, foi definido um único estúdio piloto com um `USER` autorizado a executar todo o CRUD de clientes; essa regra foi explicitada localmente no Spring Security, mas ainda precisa ser testada e versionada. A suíte completa também não está verde: o teste de contexto falha quando `LOGLVL` não está definida. As principais pendências restantes antes do deploy são tornar o build reproduzível, finalizar a autorização da fase 1 e configurar a infraestrutura de produção.
+As correções de maior urgência relacionadas ao cadastro público, aos papéis de usuário, às credenciais do banco, à fixação de sessão e ao bootstrap do primeiro administrador foram concluídas. Para a fase 1, foi definido um único estúdio piloto com um `USER` autorizado a executar todo o CRUD de clientes; essa regra foi explicitada localmente no Spring Security, mas ainda precisa de testes específicos. CORS e cookies de sessão foram centralizados e parametrizados, e a suíte completa passou com quatro testes. As principais pendências restantes antes do deploy são versionar as alterações e definir os valores reais da infraestrutura de produção.
 
 Status atualizado das correções:
 
@@ -25,20 +25,18 @@ Status atualizado das correções:
 | Pendente | Média | Rate limiting e proteção contra abuso no login |
 | Pendente | Média | Política de senha forte |
 | Pendente | Média | Atualização do Spring Boot e dependências transitivas |
-| Pendente | Baixa | Consolidação da configuração CORS |
+| Preparado localmente; configuração de PRD pendente | Baixa | CORS centralizado e cookies de sessão parametrizados |
 | Pendente | Baixa | Mitigação de enumeração de usuários |
 | Pendente | Baixa | Observabilidade e testes automatizados de segurança |
-| Bloqueador pré-deploy | Média operacional | Suíte Maven falha quando `LOGLVL` não está definida |
 
 ## Checklist pendente antes do deploy
 
 ### Bloqueadores
 
-1. Definir um valor válido de `LOGLVL` para testes ou um padrão seguro na configuração e fazer `./mvnw test` terminar sem erros.
-2. Testar e versionar a autorização explícita de `ADMIN` e `USER` sobre `/clientes/**`.
-3. Configurar HTTPS, cookies de sessão seguros e a origem CORS real do frontend de produção.
-4. Fornecer credenciais e segredos pelo mecanismo seguro da hospedagem, sem incluí-los na imagem ou no repositório.
-5. Definir se a conexão da aplicação com o PostgreSQL utilizará TLS em produção.
+1. Testar a autorização explícita de `ADMIN` e `USER` sobre `/clientes/**` e versionar todas as alterações atuais.
+2. Definir `CORS_ALLOWED_ORIGIN`, `SESSION_COOKIE_SECURE` e `SESSION_COOKIE_SAME_SITE` de acordo com os domínios reais e validar em staging com HTTPS.
+3. Fornecer credenciais e segredos pelo mecanismo seguro da hospedagem, sem incluí-los na imagem ou no repositório.
+4. Definir se a conexão da aplicação com o PostgreSQL utilizará TLS em produção.
 
 ### Fortemente recomendados
 
@@ -180,15 +178,17 @@ Referências oficiais:
 
 ## 7. Configuração CORS redundante
 
-**Severidade: Baixa**
+**Status: Corrigido localmente; valores e validação de PRD pendentes.**
 
-[`SecurityConfig.java`](src/main/java/com/example/meustudio/config/SecurityConfig.java) restringe a origem a `http://localhost:5173` e permite credenciais. Porém, `@CrossOrigin("*")` aparece em métodos de [`UserController.java`](src/main/java/com/example/meustudio/auth/UserController.java) e [`ClienteController.java`](src/main/java/com/example/meustudio/cliente/ClienteController.java).
+As anotações `@CrossOrigin("*")` foram removidas de [`UserController.java`](src/main/java/com/example/meustudio/auth/UserController.java) e [`ClienteController.java`](src/main/java/com/example/meustudio/cliente/ClienteController.java). [`SecurityConfig.java`](src/main/java/com/example/meustudio/config/SecurityConfig.java) agora concentra a política, recusa origem curinga, aceita somente a origem configurada e limita os headers a `Content-Type`, `Accept` e `X-XSRF-TOKEN`.
 
-O filtro central atualmente reduz o risco, mas as anotações permissivas criam ambiguidade e podem abrir acesso após uma refatoração ou mudança na ordem dos filtros.
+[`application.properties`](src/main/resources/application.properties) recebe a origem através de `CORS_ALLOWED_ORIGIN`, mantém `http://localhost:5173` como padrão local e configura o cookie de sessão como `HttpOnly`. `Secure` e `SameSite` são controlados por `SESSION_COOKIE_SECURE` e `SESSION_COOKIE_SAME_SITE`.
 
-### Recomendação
+[`SecurityConfigTest.java`](src/test/java/com/example/meustudio/config/SecurityConfigTest.java) confirmou que a origem configurada é aceita, uma origem não autorizada é rejeitada e `*` não pode ser usado.
 
-Manter uma única política CORS central, com origens explícitas carregadas por ambiente, e remover curingas dos controllers.
+### Validação restante
+
+Definir a origem real do frontend, usar `SESSION_COOKIE_SECURE=true` em HTTPS e escolher `SameSite` conforme a relação entre os domínios. Repetir os testes de preflight e sessão no ambiente de staging.
 
 ## 8. Enumeração de usuários
 
@@ -206,7 +206,7 @@ Embora a mensagem de erro seja a mesma, o login de um usuário inexistente termi
 
 **Severidade: Baixa**
 
-[`application.properties`](src/main/resources/application.properties) permite configurar o nível de log do Spring Security através de `LOGLVL`, mas não fornece valor padrão. Em 27 de agosto de 2026, a suíte completa falhou antes de carregar o contexto porque o valor literal `${LOGLVL}` não pôde ser convertido para um nível de log. Também não foi encontrada auditoria específica para sucesso/falha de login, criação de contas ou operações destrutivas.
+[`application.properties`](src/main/resources/application.properties) define o Spring Security em `INFO`, permitindo que a aplicação e os testes iniciem sem depender de `LOGLVL`. Para produção, `WARN` continua sendo o nível recomendado para o framework. Não foi encontrada auditoria específica para sucesso/falha de login, criação de contas ou operações destrutivas.
 
 ### Recomendação
 
@@ -214,23 +214,24 @@ Registrar eventos de segurança com cuidado para nunca incluir senhas, hashes, c
 
 ## 10. Testes e validação
 
-Existem dois testes automatizados:
+Existem quatro testes automatizados distribuídos em três classes:
 
 - [`MeuStudioApplicationTests.java`](src/test/java/com/example/meustudio/MeuStudioApplicationTests.java) tenta carregar o contexto completo.
 - [`SessionServiceTest.java`](src/test/java/com/example/meustudio/auth/SessionServiceTest.java) verifica que o identificador de uma sessão preexistente muda depois do login.
+- [`SecurityConfigTest.java`](src/test/java/com/example/meustudio/config/SecurityConfigTest.java) contém dois testes para origem CORS permitida, origem rejeitada e proibição de curinga.
 
-Em 27 de agosto de 2026, `./mvnw -q test` executou dois testes: o teste de sessão passou e o teste de contexto terminou com erro. A causa imediata foi `logging.level.org.springframework.security=${LOGLVL}` sem valor disponível, antes de alcançar a configuração do banco.
+Em 27 de agosto de 2026, a suíte completa foi executada com o ambiente local carregado: quatro testes passaram, sem falhas ou erros. O contexto conectou ao PostgreSQL, validou quatro migrations e confirmou que o schema já estava atualizado.
 
 Não existem testes automatizados para:
 
 - acesso anônimo e autenticado;
 - autorização de `/clientes/**` para `ADMIN`, `USER`, anônimos e papéis inesperados;
-- CSRF e CORS;
+- CSRF e integração HTTP completa do CORS;
 - política de senha;
 - bloqueio e rate limiting;
 - bootstrap do primeiro administrador.
 
-A compilação dos testes foi concluída, mas a suíte terminou com uma execução bem-sucedida e um erro de infraestrutura/configuração. Enquanto o comando completo não terminar com código de saída zero, o build não deve ser promovido para produção.
+A compilação e a suíte completa terminaram com código de saída zero. Ainda são necessários testes de autorização e validação em staging antes da promoção para produção.
 
 ## 11. Bootstrap controlado do primeiro ADMIN
 
@@ -253,13 +254,12 @@ A validação em banco limpo confirmou a criação de exatamente um `ADMIN`, o a
 
 ## Ordem sugerida de correção
 
-1. Corrigir a configuração de `LOGLVL` para tornar a suíte reproduzível e fazer todos os testes passarem.
-2. Testar e versionar a autorização explícita de `ADMIN` e `USER` sobre clientes.
-3. Consolidar o CORS e configurar cookies, HTTPS e TLS de produção.
-4. Adicionar rate limiting e fortalecer a política de senha.
-5. Atualizar o Spring Boot e as dependências transitivas.
-6. Criar os testes automatizados de segurança restantes.
-7. Adicionar observabilidade e detecção automática de segredos aos commits e à CI.
+1. Testar a autorização explícita de `ADMIN` e `USER` sobre clientes e versionar as alterações atuais.
+2. Definir os domínios, cookies, HTTPS e TLS de produção e validar tudo em staging.
+3. Adicionar rate limiting e fortalecer a política de senha.
+4. Atualizar o Spring Boot e as dependências transitivas.
+5. Criar os testes automatizados de segurança restantes.
+6. Adicionar observabilidade e detecção automática de segredos aos commits e à CI.
 
 ## Limitações e decisões pendentes
 

@@ -3,7 +3,6 @@ package com.example.meustudio.auth;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.web.csrf.CsrfToken;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -30,7 +29,6 @@ public class UserController {
         this.sessionService = sessionService;
     }
 
-    @CrossOrigin("*")
     @PostMapping("/CreateUser")
     public ResponseEntity<CreateUserResponse> criar(@Valid @RequestBody CreateUserRequest request) {
         CreateUserResponse response = userService.criar(request);
@@ -42,7 +40,6 @@ public class UserController {
         return token;
     }
 
-    @CrossOrigin("*")
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> autenticarUser(@Valid @RequestBody LoginRequest request,
             HttpServletRequest servletRequest, HttpServletResponse servletResponse) {
