@@ -7,7 +7,7 @@
 
 ## Resumo executivo
 
-As correções de maior urgência relacionadas ao cadastro público, aos papéis de usuário e às credenciais do banco foram concluídas. O risco crítico original foi reduzido, mas o projeto ainda possui pendências relevantes antes do deploy, principalmente autorização sobre clientes, fixação de sessão, bootstrap do primeiro administrador e proteção contra abuso dos endpoints públicos.
+As correções de maior urgência relacionadas ao cadastro público, aos papéis de usuário e às credenciais do banco foram concluídas. O bootstrap controlado do primeiro administrador foi implementado e compilado, mas ainda precisa ser validado em um banco sem `ADMIN`. O projeto permanece com pendências relevantes antes do deploy, principalmente autorização sobre clientes, fixação de sessão e proteção contra abuso dos endpoints públicos.
 
 Status atualizado das correções:
 
@@ -20,13 +20,32 @@ Status atualizado das correções:
 | Concluído | — | Credenciais removidas do histórico Git local e remoto |
 | Pendente | Alta | Autorização por papel, proprietário ou estúdio nos endpoints de clientes |
 | Pendente | Alta | Proteção contra fixação de sessão no login manual |
-| Pendente antes do deploy | Alta operacional | Bootstrap controlado do primeiro `ADMIN` em produção |
+| Implementado; validação pendente | Alta operacional | Bootstrap controlado do primeiro `ADMIN` em produção |
 | Pendente | Média | Rate limiting e proteção contra abuso no login |
 | Pendente | Média | Política de senha forte |
 | Pendente | Média | Atualização do Spring Boot e dependências transitivas |
 | Pendente | Baixa | Consolidação da configuração CORS |
 | Pendente | Baixa | Mitigação de enumeração de usuários |
 | Pendente | Baixa | Observabilidade e testes automatizados de segurança |
+
+## Checklist pendente antes do deploy
+
+### Bloqueadores
+
+1. Validar o bootstrap em um banco sem `ADMIN`, confirmar o login criado, remover todas as variáveis `BOOTSTRAP_ADMIN_*` e reiniciar a aplicação com o bootstrap desabilitado.
+2. Corrigir a fixação de sessão e comprovar que o identificador da sessão muda após um login bem-sucedido.
+3. Definir se usuários `USER` podem listar, alterar e excluir todos os clientes; aplicar autorização caso não possam.
+4. Configurar HTTPS, cookies de sessão seguros e a origem CORS real do frontend de produção.
+5. Fornecer credenciais e segredos pelo mecanismo seguro da hospedagem, sem incluí-los na imagem ou no repositório.
+
+### Fortemente recomendados
+
+1. Aplicar rate limiting no login e backoff após falhas.
+2. Fortalecer a política de senha.
+3. Atualizar o Spring Boot e as dependências transitivas.
+4. Criar testes automatizados para autenticação, autorização, CSRF, sessão e bootstrap.
+5. Habilitar auditoria de eventos de segurança sem registrar credenciais ou cookies.
+6. Adicionar detecção automática de segredos aos commits e à CI.
 
 ## 1. Cadastro público corrigido; autorização de clientes pendente
 
@@ -208,6 +227,14 @@ Não existem testes automatizados para:
 
 A compilação das classes estava atualizada, mas a suíte terminou com um erro de infraestrutura antes de validar o comportamento da aplicação.
 
+## 11. Bootstrap controlado do primeiro ADMIN
+
+**Status: Implementado; validação operacional pendente.**
+
+[`AdminBootstrap.java`](src/main/java/com/example/meustudio/auth/AdminBootstrap.java) é ativado somente quando `app.bootstrap-admin.enabled=true`, valida as configurações obrigatórias, recusa a execução quando já existe um `ADMIN`, codifica a senha e persiste o primeiro administrador. [`application.properties`](src/main/resources/application.properties) mantém o recurso desabilitado por padrão e recebe os valores através de variáveis de ambiente.
+
+A compilação passou após a implementação. Para concluir a pendência, ainda é necessário executar o fluxo completo em um banco sem administrador, testar o login, remover as variáveis temporárias e confirmar que a aplicação reinicia com o bootstrap desabilitado.
+
 ## Pontos positivos
 
 - Senhas são armazenadas com BCrypt, não em texto puro no código atual.
@@ -221,9 +248,9 @@ A compilação das classes estava atualizada, mas a suíte terminou com um erro 
 
 ## Ordem sugerida de correção
 
-1. Definir e implementar o bootstrap controlado do primeiro `ADMIN` em produção.
-2. Corrigir o fluxo de autenticação e a rotação do identificador de sessão.
-3. Definir e implementar autorização sobre clientes por papel, proprietário ou estúdio.
+1. Corrigir o fluxo de autenticação e a rotação do identificador de sessão.
+2. Definir e implementar autorização sobre clientes por papel, proprietário ou estúdio.
+3. Validar operacionalmente o bootstrap do primeiro `ADMIN` em um banco limpo.
 4. Adicionar rate limiting e fortalecer a política de senha.
 5. Atualizar o Spring Boot e as dependências transitivas.
 6. Consolidar o CORS e configurar cookies/TLS de produção.
@@ -238,6 +265,6 @@ As seguintes decisões precisam ser confirmadas antes de definir a solução arq
 
 1. Cada usuário deve visualizar todos os clientes ou somente clientes do seu estúdio?
 2. Quais operações sobre clientes devem ser exclusivas do `ADMIN`?
-3. Como o segredo temporário do bootstrap do primeiro `ADMIN` será fornecido e invalidado em produção?
+3. Qual mecanismo de secrets da hospedagem fornecerá e removerá as variáveis temporárias do bootstrap?
 4. A API será publicada atrás de HTTPS e reverse proxy?
 5. A conexão entre a aplicação e o PostgreSQL exigirá TLS em produção?
