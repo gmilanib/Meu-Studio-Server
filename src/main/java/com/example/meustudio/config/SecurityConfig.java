@@ -41,6 +41,8 @@ public class SecurityConfig {
                                                 .requestMatchers("/auth/login").permitAll()
                                                 .requestMatchers(HttpMethod.POST, "/auth/CreateUser")
                                                 .hasRole("ADMIN")
+                                                .requestMatchers("/clientes/**")
+                                                .hasAnyRole("ADMIN", "USER")
                                                 .anyRequest().authenticated());
 
                 return http.build();

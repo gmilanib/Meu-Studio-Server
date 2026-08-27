@@ -2,12 +2,13 @@
 
 **Projeto:** Meu Studio Server  
 **Data da avaliação:** 25 de agosto de 2026  
-**Última atualização:** 26 de agosto de 2026
+**Última atualização:** 27 de agosto de 2026
 **Escopo:** código-fonte, configurações, migrations, dependências Maven, testes e histórico Git local.
+**Status pré-deploy:** NÃO APROVADO para exposição pública enquanto os bloqueadores abaixo permanecerem abertos.
 
 ## Resumo executivo
 
-As correções de maior urgência relacionadas ao cadastro público, aos papéis de usuário e às credenciais do banco foram concluídas. O bootstrap controlado do primeiro administrador foi implementado e compilado, mas ainda precisa ser validado em um banco sem `ADMIN`. O projeto permanece com pendências relevantes antes do deploy, principalmente autorização sobre clientes, fixação de sessão e proteção contra abuso dos endpoints públicos.
+As correções de maior urgência relacionadas ao cadastro público, aos papéis de usuário, às credenciais do banco, à fixação de sessão e ao bootstrap do primeiro administrador foram concluídas. Para a fase 1, foi definido um único estúdio piloto com um `USER` autorizado a executar todo o CRUD de clientes; essa regra foi explicitada localmente no Spring Security, mas ainda precisa ser testada e versionada. A suíte completa também não está verde: o teste de contexto falha quando `LOGLVL` não está definida. As principais pendências restantes antes do deploy são tornar o build reproduzível, finalizar a autorização da fase 1 e configurar a infraestrutura de produção.
 
 Status atualizado das correções:
 
@@ -18,62 +19,62 @@ Status atualizado das correções:
 | Concluído | — | A sessão converte o papel persistido para a autoridade `ROLE_<papel>` |
 | Concluído | — | Senha do banco rotacionada e usuário da aplicação sem privilégios administrativos |
 | Concluído | — | Credenciais removidas do histórico Git local e remoto |
-| Pendente | Alta | Autorização por papel, proprietário ou estúdio nos endpoints de clientes |
-| Pendente | Alta | Proteção contra fixação de sessão no login manual |
-| Implementado; validação pendente | Alta operacional | Bootstrap controlado do primeiro `ADMIN` em produção |
+| Implementado para a fase 1; teste e commit pendentes | — | `ADMIN` e `USER` possuem acesso total aos clientes de um único estúdio piloto |
+| Concluído | — | Proteção contra fixação de sessão validada por teste automatizado |
+| Concluído | — | Bootstrap controlado do primeiro `ADMIN` validado em banco limpo |
 | Pendente | Média | Rate limiting e proteção contra abuso no login |
 | Pendente | Média | Política de senha forte |
 | Pendente | Média | Atualização do Spring Boot e dependências transitivas |
 | Pendente | Baixa | Consolidação da configuração CORS |
 | Pendente | Baixa | Mitigação de enumeração de usuários |
 | Pendente | Baixa | Observabilidade e testes automatizados de segurança |
+| Bloqueador pré-deploy | Média operacional | Suíte Maven falha quando `LOGLVL` não está definida |
 
 ## Checklist pendente antes do deploy
 
 ### Bloqueadores
 
-1. Validar o bootstrap em um banco sem `ADMIN`, confirmar o login criado, remover todas as variáveis `BOOTSTRAP_ADMIN_*` e reiniciar a aplicação com o bootstrap desabilitado.
-2. Corrigir a fixação de sessão e comprovar que o identificador da sessão muda após um login bem-sucedido.
-3. Definir se usuários `USER` podem listar, alterar e excluir todos os clientes; aplicar autorização caso não possam.
-4. Configurar HTTPS, cookies de sessão seguros e a origem CORS real do frontend de produção.
-5. Fornecer credenciais e segredos pelo mecanismo seguro da hospedagem, sem incluí-los na imagem ou no repositório.
+1. Definir um valor válido de `LOGLVL` para testes ou um padrão seguro na configuração e fazer `./mvnw test` terminar sem erros.
+2. Testar e versionar a autorização explícita de `ADMIN` e `USER` sobre `/clientes/**`.
+3. Configurar HTTPS, cookies de sessão seguros e a origem CORS real do frontend de produção.
+4. Fornecer credenciais e segredos pelo mecanismo seguro da hospedagem, sem incluí-los na imagem ou no repositório.
+5. Definir se a conexão da aplicação com o PostgreSQL utilizará TLS em produção.
 
 ### Fortemente recomendados
 
 1. Aplicar rate limiting no login e backoff após falhas.
 2. Fortalecer a política de senha.
 3. Atualizar o Spring Boot e as dependências transitivas.
-4. Criar testes automatizados para autenticação, autorização, CSRF, sessão e bootstrap.
+4. Criar testes automatizados para autenticação, autorização, CSRF e bootstrap; o teste de troca do ID da sessão já foi implementado.
 5. Habilitar auditoria de eventos de segurança sem registrar credenciais ou cookies.
 6. Adicionar detecção automática de segredos aos commits e à CI.
 
-## 1. Cadastro público corrigido; autorização de clientes pendente
+## 1. Cadastro e autorização de clientes
 
-**Status: Parcialmente concluído**
-**Severidade restante: Alta se usuários comuns não puderem administrar todos os clientes.**
+**Status: Resolvido para a fase 1; teste e commit da regra explícita pendentes.**
 
 ### Evidências
 
 - [`SecurityConfig.java`](src/main/java/com/example/meustudio/config/SecurityConfig.java) agora libera publicamente somente `/auth/csrf` e `/auth/login`; `POST /auth/CreateUser` exige `ROLE_ADMIN`.
 - [`SessionService.java`](src/main/java/com/example/meustudio/auth/SessionService.java) cria a autoridade a partir do papel persistido, usando o formato `ROLE_<papel>`.
 - [`User.java`](src/main/java/com/example/meustudio/auth/User.java) atribui `USER` somente quando o papel está ausente, preservando um `ADMIN` previamente definido.
-- [`ClienteController.java`](src/main/java/com/example/meustudio/cliente/ClienteController.java) permite listar, consultar, criar, atualizar e excluir clientes sem verificar papel, proprietário ou estúdio.
-- [`ClienteService.java`](src/main/java/com/example/meustudio/cliente/ClienteService.java) consulta os clientes globalmente, sem filtro por usuário ou tenant.
+- A fase 1 terá somente um estúdio piloto e um único `USER`, que deve possuir acesso total aos clientes.
+- [`SecurityConfig.java`](src/main/java/com/example/meustudio/config/SecurityConfig.java) possui uma alteração local que restringe `/clientes/**` explicitamente aos papéis `ADMIN` e `USER`.
+- [`ClienteService.java`](src/main/java/com/example/meustudio/cliente/ClienteService.java) consulta os clientes globalmente, comportamento compatível com a fase de estúdio único.
 
 ### Cenário de exploração
 
-O caminho de exploração por autocadastro foi fechado. Entretanto, qualquer conta autenticada criada pelo administrador ainda pode acessar ou modificar globalmente os registros de clientes. Se todas as contas pertencerem a um único estúdio e forem igualmente confiáveis, isso pode ser uma decisão de negócio; caso contrário, falta controle de acesso.
+O caminho de exploração por autocadastro foi fechado. O acesso global por `ADMIN` e `USER` é uma decisão consciente para o estúdio piloto, não uma separação multi-tenant.
 
 ### Impacto
 
-Exposição, alteração e exclusão de dados pessoais, incluindo nome, e-mail e telefone.
+Uma conta `USER` comprometida terá acesso total aos dados dos clientes. Esse risco é aceito na fase 1 e deverá ser revisto quando houver mais usuários, permissões distintas ou um segundo estúdio.
 
 ### Recomendação
 
-1. Confirmar quais ações `ADMIN` e `USER` podem executar sobre clientes.
-2. Se houver mais de um estúdio, associar usuários e clientes através de `studio_id`.
-3. Filtrar consultas e mutações pelo estúdio ou proprietário autenticado.
-4. Aplicar autorização tanto nos endpoints quanto na camada de serviço.
+1. Criar testes que comprovem acesso total para `ADMIN` e `USER` e bloqueio para anônimos ou papéis inesperados.
+2. Versionar a alteração atual de `SecurityConfig.java`.
+3. Reabrir esta análise antes de adicionar outro estúdio ou papéis com permissões diferentes.
 
 ## 2. Credenciais expostas no histórico Git
 
@@ -98,21 +99,21 @@ As seguintes correções foram concluídas:
 
 Adicionar detecção automática de segredos ao processo de commit e à CI.
 
-## 3. Possível fixação de sessão
+## 3. Fixação de sessão
 
-**Severidade: Alta**
+**Status: Corrigido, validado e versionado no commit `b1e8d6c`.**
 
 ### Evidência
 
-[`SessionService.java`](src/main/java/com/example/meustudio/auth/SessionService.java) cria manualmente o `Authentication` e salva o `SecurityContext`, mas não executa uma `SessionAuthenticationStrategy` nem troca explicitamente o identificador da sessão após o login.
+[`SecurityConfig.java`](src/main/java/com/example/meustudio/config/SecurityConfig.java) fornece uma `ChangeSessionIdAuthenticationStrategy`. [`SessionService.java`](src/main/java/com/example/meustudio/auth/SessionService.java) executa essa estratégia antes de persistir o novo `SecurityContext`.
 
 ### Impacto
 
-Se um atacante conseguir fazer a vítima utilizar uma sessão previamente conhecida, a sessão poderá continuar com o mesmo identificador depois da autenticação, possibilitando sequestro da conta.
+[`SessionServiceTest.java`](src/test/java/com/example/meustudio/auth/SessionServiceTest.java) cria uma sessão conhecida antes do login e verifica que seu identificador muda depois da autenticação. O teste foi executado isoladamente com uma execução, zero falhas e zero erros.
 
-### Recomendação
+### Validação restante
 
-Preferir o fluxo padrão do Spring Security, usando `AuthenticationManager` e os filtros de autenticação. Caso o login permaneça em um controller, executar a estratégia de autenticação de sessão, incluindo a troca do ID, antes de persistir o contexto.
+Executar a suíte completa em um ambiente de teste com banco configurado antes do deploy.
 
 Referência: [Session Management — Spring Security](https://docs.spring.io/spring-security/reference/7.0/servlet/authentication/session-management.html).
 
@@ -205,7 +206,7 @@ Embora a mensagem de erro seja a mesma, o login de um usuário inexistente termi
 
 **Severidade: Baixa**
 
-[`application.properties`](src/main/resources/application.properties) permite configurar o nível de log do Spring Security através de `LOGLVL`. Não foi encontrada auditoria específica para sucesso/falha de login, criação de contas ou operações destrutivas.
+[`application.properties`](src/main/resources/application.properties) permite configurar o nível de log do Spring Security através de `LOGLVL`, mas não fornece valor padrão. Em 27 de agosto de 2026, a suíte completa falhou antes de carregar o contexto porque o valor literal `${LOGLVL}` não pôde ser convertido para um nível de log. Também não foi encontrada auditoria específica para sucesso/falha de login, criação de contas ou operações destrutivas.
 
 ### Recomendação
 
@@ -213,27 +214,31 @@ Registrar eventos de segurança com cuidado para nunca incluir senhas, hashes, c
 
 ## 10. Testes e validação
 
-O único teste existente, [`MeuStudioApplicationTests.java`](src/test/java/com/example/meustudio/MeuStudioApplicationTests.java), apenas tenta carregar o contexto. Durante a avaliação, ele falhou porque `DB_URL` não estava disponível no ambiente de teste.
+Existem dois testes automatizados:
+
+- [`MeuStudioApplicationTests.java`](src/test/java/com/example/meustudio/MeuStudioApplicationTests.java) tenta carregar o contexto completo.
+- [`SessionServiceTest.java`](src/test/java/com/example/meustudio/auth/SessionServiceTest.java) verifica que o identificador de uma sessão preexistente muda depois do login.
+
+Em 27 de agosto de 2026, `./mvnw -q test` executou dois testes: o teste de sessão passou e o teste de contexto terminou com erro. A causa imediata foi `logging.level.org.springframework.security=${LOGLVL}` sem valor disponível, antes de alcançar a configuração do banco.
 
 Não existem testes automatizados para:
 
 - acesso anônimo e autenticado;
-- autorização por papel ou proprietário;
+- autorização de `/clientes/**` para `ADMIN`, `USER`, anônimos e papéis inesperados;
 - CSRF e CORS;
-- troca do identificador da sessão no login;
 - política de senha;
 - bloqueio e rate limiting;
-- proteção contra acesso entre usuários ou estúdios.
+- bootstrap do primeiro administrador.
 
-A compilação das classes estava atualizada, mas a suíte terminou com um erro de infraestrutura antes de validar o comportamento da aplicação.
+A compilação dos testes foi concluída, mas a suíte terminou com uma execução bem-sucedida e um erro de infraestrutura/configuração. Enquanto o comando completo não terminar com código de saída zero, o build não deve ser promovido para produção.
 
 ## 11. Bootstrap controlado do primeiro ADMIN
 
-**Status: Implementado; validação operacional pendente.**
+**Status: Concluído e validado operacionalmente em 27 de agosto de 2026.**
 
 [`AdminBootstrap.java`](src/main/java/com/example/meustudio/auth/AdminBootstrap.java) é ativado somente quando `app.bootstrap-admin.enabled=true`, valida as configurações obrigatórias, recusa a execução quando já existe um `ADMIN`, codifica a senha e persiste o primeiro administrador. [`application.properties`](src/main/resources/application.properties) mantém o recurso desabilitado por padrão e recebe os valores através de variáveis de ambiente.
 
-A compilação passou após a implementação. Para concluir a pendência, ainda é necessário executar o fluxo completo em um banco sem administrador, testar o login, remover as variáveis temporárias e confirmar que a aplicação reinicia com o bootstrap desabilitado.
+A validação em banco limpo confirmou a criação de exatamente um `ADMIN`, o armazenamento da senha com BCrypt e o login com a conta criada. Uma segunda inicialização com o bootstrap ainda habilitado foi recusada, como esperado. Depois da remoção das variáveis `BOOTSTRAP_ADMIN_*`, a aplicação reiniciou normalmente e permaneceu com apenas um administrador.
 
 ## Pontos positivos
 
@@ -248,14 +253,13 @@ A compilação passou após a implementação. Para concluir a pendência, ainda
 
 ## Ordem sugerida de correção
 
-1. Corrigir o fluxo de autenticação e a rotação do identificador de sessão.
-2. Definir e implementar autorização sobre clientes por papel, proprietário ou estúdio.
-3. Validar operacionalmente o bootstrap do primeiro `ADMIN` em um banco limpo.
+1. Corrigir a configuração de `LOGLVL` para tornar a suíte reproduzível e fazer todos os testes passarem.
+2. Testar e versionar a autorização explícita de `ADMIN` e `USER` sobre clientes.
+3. Consolidar o CORS e configurar cookies, HTTPS e TLS de produção.
 4. Adicionar rate limiting e fortalecer a política de senha.
 5. Atualizar o Spring Boot e as dependências transitivas.
-6. Consolidar o CORS e configurar cookies/TLS de produção.
-7. Criar testes automatizados de segurança e observabilidade.
-8. Adicionar detecção automática de segredos aos commits e à CI.
+6. Criar os testes automatizados de segurança restantes.
+7. Adicionar observabilidade e detecção automática de segredos aos commits e à CI.
 
 ## Limitações e decisões pendentes
 
@@ -263,8 +267,6 @@ Esta foi principalmente uma análise estática e de dependências. Posteriorment
 
 As seguintes decisões precisam ser confirmadas antes de definir a solução arquitetural:
 
-1. Cada usuário deve visualizar todos os clientes ou somente clientes do seu estúdio?
-2. Quais operações sobre clientes devem ser exclusivas do `ADMIN`?
-3. Qual mecanismo de secrets da hospedagem fornecerá e removerá as variáveis temporárias do bootstrap?
-4. A API será publicada atrás de HTTPS e reverse proxy?
-5. A conexão entre a aplicação e o PostgreSQL exigirá TLS em produção?
+1. Qual mecanismo de secrets da hospedagem fornecerá e removerá as variáveis temporárias do bootstrap?
+2. A API será publicada atrás de HTTPS e reverse proxy?
+3. A conexão entre a aplicação e o PostgreSQL exigirá TLS em produção?
