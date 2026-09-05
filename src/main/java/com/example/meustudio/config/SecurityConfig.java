@@ -43,12 +43,15 @@ public class SecurityConfig {
         public SecurityFilterChain filterChain(HttpSecurity http,
                         SecurityContextRepository securityContextRepository) {
 
+                CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+                csrfTokenRepository.setCookieCustomizer(cookie -> cookie.sameSite("None").secure(true));
+
                 http
                                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                                 .securityContext(securityContext -> securityContext
                                                 .securityContextRepository(securityContextRepository))
 
-                                .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
+                                .csrf(csrf -> csrf.csrfTokenRepository(csrfTokenRepository))
                                 .authorizeHttpRequests(auth -> auth
                                                 .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                                                 .requestMatchers("/auth/csrf").permitAll()
