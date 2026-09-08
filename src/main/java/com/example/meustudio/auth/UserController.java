@@ -35,6 +35,13 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    // @PatchMapping("/UpdateUser")
+    // public ResponseEntity<CreateUserResponse> criar(@Valid @RequestBody
+    // CreateUserRequest request) {
+    // CreateUserResponse response = userService.criar(request);
+    // return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    // }
+
     @GetMapping("/csrf")
     public CsrfToken getCsrf(CsrfToken token) {
         return token;
