@@ -9,7 +9,6 @@ public record ClienteRequest(
         @Size(max = 120, message = "Nome deve ter no máximo 120 caracteres")
         String nome,
 
-        @NotBlank(message = "Email é obrigatório")
         @Email(message = "Email inválido")
         @Size(max = 160, message = "Email deve ter no máximo 160 caracteres")
         String email,
@@ -17,4 +16,7 @@ public record ClienteRequest(
         @Size(max = 20, message = "Telefone deve ter no máximo 20 caracteres")
         String telefone
 ) {
+    public ClienteRequest {
+        email = email == null || email.isBlank() ? null : email.strip();
+    }
 }

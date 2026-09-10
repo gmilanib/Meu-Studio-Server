@@ -62,6 +62,10 @@ public class ClienteService {
     }
 
     private void validarEmailDuplicado(String email, Long idAtual) {
+        if (email == null) {
+            return;
+        }
+
         clienteRepository.findByEmail(email).ifPresent(clienteExistente -> {
             boolean mesmoRegistro = idAtual != null && clienteExistente.getId().equals(idAtual);
             if (!mesmoRegistro) {

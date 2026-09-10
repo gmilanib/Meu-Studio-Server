@@ -191,8 +191,8 @@ X-XSRF-TOKEN: valor-do-token
 
 | Campo | Tipo | Regras |
 |---|---|---|
-| `username` | `string` | Obrigatório e não pode estar em branco |
-| `password` | `string` | Obrigatório e não pode estar em branco |
+| `username` | `string` | Obrigatório e não pode estar em branco; espaços nas extremidades são removidos |
+| `password` | `string` | Obrigatório e não pode estar em branco; espaços não são removidos |
 
 **Resposta `200 OK`:**
 
@@ -257,7 +257,7 @@ Todos os endpoints de clientes exigem uma sessão autenticada com perfil `ADMIN`
 type Cliente = {
   id: number;
   nome: string;
-  email: string;
+  email: string | null;
   telefone: string | null;
   criadoEm: string;
   atualizadoEm: string;
@@ -265,10 +265,12 @@ type Cliente = {
 
 type ClienteRequest = {
   nome: string;
-  email: string;
+  email?: string | null;
   telefone?: string | null;
 };
 ```
+
+No cadastro e na atualização, `email` pode ser omitido ou enviado como `null`/texto em branco. Textos em branco são armazenados como `null`.
 
 Os campos `criadoEm` e `atualizadoEm` são timestamps ISO, por exemplo `2026-09-10T14:30:00`.
 
@@ -342,7 +344,7 @@ X-XSRF-TOKEN: valor-do-token
 | Campo | Tipo | Regras |
 |---|---|---|
 | `nome` | `string` | Obrigatório; máximo de 120 caracteres |
-| `email` | `string` | Obrigatório; e-mail válido; máximo de 160 caracteres |
+| `email` | `string` ou `null` | Opcional; quando informado, deve ser um e-mail válido com no máximo 160 caracteres |
 | `telefone` | `string` ou `null` | Opcional; máximo de 20 caracteres |
 
 **Resposta:** `201 Created` com o cliente criado.
