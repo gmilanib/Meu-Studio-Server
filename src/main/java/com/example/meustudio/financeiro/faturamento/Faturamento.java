@@ -1,6 +1,7 @@
 package com.example.meustudio.financeiro.faturamento;
 
-import java.time.LocalDateTime;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
@@ -15,26 +16,26 @@ import jakarta.persistence.Table;
 public class Faturamento {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "fatid", nullable = false, updatable = false)
     private UUID fatID;
 
     @Column(nullable = false, name = "datafaturamento")
-    private LocalDateTime dataFaturamento;
+    private LocalDate dataFaturamento;
 
-    @Column(nullable = false, name = "clienteid")
-    private long clienteID;
+    @Column(nullable = false, name = "clientename", length = 120)
+    private String cliente;
 
-    @Column(nullable = false, name = "valorbrutofaturamento")
-    private float valorBrutoFaturamento;
+    @Column(nullable = false, length = 160)
+    private String procedimento;
+
+    @Column(nullable = false, name = "valorbrutofaturamento", precision = 12, scale = 2)
+    private BigDecimal valorBrutoFaturamento;
+
+    @Column(nullable = false, name = "meiopagamento", length = 30)
+    private String meioDePagamento;
 
     public Faturamento() {
-    }
-
-    public Faturamento(UUID fatID, LocalDateTime dataFaturamento, long clienteID, float valorBrutoFaturamento) {
-        this.fatID = fatID;
-        this.dataFaturamento = dataFaturamento;
-        this.clienteID = clienteID;
-        this.valorBrutoFaturamento = valorBrutoFaturamento;
     }
 
     public UUID getFatID() {
@@ -45,28 +46,44 @@ public class Faturamento {
         this.fatID = fatID;
     }
 
-    public LocalDateTime getDataFaturamento() {
+    public LocalDate getDataFaturamento() {
         return dataFaturamento;
     }
 
-    public void setDataFaturamento(LocalDateTime dataFaturamento) {
+    public void setDataFaturamento(LocalDate dataFaturamento) {
         this.dataFaturamento = dataFaturamento;
     }
 
-    public long getClienteID() {
-        return clienteID;
+    public String getCliente() {
+        return cliente;
     }
 
-    public void setClienteID(long clienteID) {
-        this.clienteID = clienteID;
+    public void setCliente(String cliente) {
+        this.cliente = cliente;
     }
 
-    public float getValorBrutoFaturamento() {
+    public String getProcedimento() {
+        return procedimento;
+    }
+
+    public void setProcedimento(String procedimento) {
+        this.procedimento = procedimento;
+    }
+
+    public BigDecimal getValorBrutoFaturamento() {
         return valorBrutoFaturamento;
     }
 
-    public void setValorBrutoFaturamento(float valorBrutoFaturamento) {
+    public void setValorBrutoFaturamento(BigDecimal valorBrutoFaturamento) {
         this.valorBrutoFaturamento = valorBrutoFaturamento;
+    }
+
+    public String getMeioDePagamento() {
+        return meioDePagamento;
+    }
+
+    public void setMeioDePagamento(String meioDePagamento) {
+        this.meioDePagamento = meioDePagamento;
     }
 
 }
