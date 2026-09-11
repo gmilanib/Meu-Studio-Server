@@ -1,6 +1,11 @@
 package com.example.meustudio.financeiro;
 
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import com.example.meustudio.financeiro.faturamento.FaturamentoFiltro;
+import com.example.meustudio.financeiro.faturamento.FaturamentoPaginaResponse;
+import com.example.meustudio.shared.BusinessException;
 
 import com.example.meustudio.financeiro.faturamento.Faturamento;
 import com.example.meustudio.financeiro.faturamento.FaturamentoRequest;
@@ -27,6 +32,16 @@ public class FinanceiroService {
         faturamento.setMeioDePagamento(request.meioDePagamento());
 
         return FaturamentoResponse.fromEntity(financeiroRepository.save(faturamento));
+    }
+
+    public FaturamentoPaginaResponse listar(FaturamentoFiltro filtro, int page, int size) {
+        if (page < 0 || size < 1 || size > 50) {
+            throw new BusinessException("page deve ser maior ou igual a zero e size deve estar entre 1 e 50");
+        }
+        var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "dataFaturamento", "fatID"));
+        var resultado = financeiroRepository.findAll(filtro.toSpecification(), pageable)
+                .map(FaturamentoResponse::fromEntity);
+        return FaturamentoPaginaResponse.fromPage(resultado);
     }
 
 }
