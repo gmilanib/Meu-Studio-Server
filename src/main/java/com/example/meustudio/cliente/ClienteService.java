@@ -5,7 +5,8 @@ import com.example.meustudio.shared.NotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 @Service
 public class ClienteService {
@@ -17,8 +18,14 @@ public class ClienteService {
     }
 
     @Transactional(readOnly = true)
-    public List<ClienteResponse> listar() {
-        return clienteRepository.findAll().stream().map(ClienteResponse::fromEntity).toList();
+    public ClientePaginaResponse listar(ClienteFiltro filtro, int page, int size) {
+        if (page < 0 || size < 1 || size > 50) {
+            throw new BusinessException("page deve ser maior ou igual a zero e size deve estar entre 1 e 50");
+        }
+        var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "criadoEm", "id"));
+        var resultado = clienteRepository.findAll(filtro.toSpecification(), pageable)
+                .map(ClienteResponse::fromEntity);
+        return ClientePaginaResponse.fromPage(resultado);
     }
 
     @Transactional(readOnly = true)

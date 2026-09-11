@@ -283,22 +283,83 @@ Os campos `criadoEm` e `atualizadoEm` são timestamps ISO, por exemplo `2026-09-
 GET /clientes
 ```
 
+Os filtros abaixo são opcionais e combinados com **E**. Envie-os na URL, sem corpo. A chamada exige sessão (`credentials: "include"`) e não exige header CSRF.
+
+| Parâmetro | Tipo | Regra |
+|---|---|---|
+| `nome` | `string` | Trecho literal, sem distinguir maiúsculas e minúsculas |
+| `email` | `string` | Trecho literal, sem distinguir maiúsculas e minúsculas |
+| `telefone` | `string` | Trecho literal, sem distinguir maiúsculas e minúsculas; não remove a máscara do telefone |
+| `criadoEm` | Data ISO | Dia exato de criação, `YYYY-MM-DD` |
+| `criadoEmInicio` | Data ISO | Primeiro dia de criação, inclusivo |
+| `criadoEmFim` | Data ISO | Último dia de criação, inclusivo |
+| `atualizadoEm` | Data ISO | Dia exato da última atualização, `YYYY-MM-DD` |
+| `atualizadoEmInicio` | Data ISO | Primeiro dia de atualização, inclusivo |
+| `atualizadoEmFim` | Data ISO | Último dia de atualização, inclusivo |
+| `page` | Inteiro | Índice iniciado em zero; padrão `0`; mínimo `0` |
+| `size` | Inteiro | De `1` a `50`; padrão `50`; valores maiores são rejeitados |
+
+Para cada campo de data, escolha dia único ou intervalo. Os filtros de criação e atualização podem ser combinados entre si. Os intervalos aceitam apenas um limite e incluem todos os horários do último dia. Não envie timestamps nos filtros: embora a resposta contenha horários, os parâmetros aceitam dias `YYYY-MM-DD`, sem conversão de fuso.
+
+Textos em branco são ignorados e espaços nas extremidades são removidos. `%` e `_` são texto literal. Campos nulos de e-mail/telefone não correspondem a um filtro preenchido desses campos.
+
+A consulta é paginada no banco e ordenada por `criadoEm` decrescente, com `id` decrescente como desempate. Sem filtros, lista todos os clientes de forma paginada.
+
+```http
+GET /clientes?nome=maria&email=mail&criadoEmInicio=2026-09-01&criadoEmFim=2026-09-11&page=0&size=50
+GET /clientes?atualizadoEm=2026-09-11&page=0&size=20
+```
+
 **Resposta `200 OK`:**
 
 ```json
-[
-  {
-    "id": 1,
-    "nome": "Maria da Silva",
-    "email": "maria@email.com",
-    "telefone": "11999999999",
-    "criadoEm": "2026-09-10T14:30:00",
-    "atualizadoEm": "2026-09-10T14:30:00"
-  }
-]
+{
+  "content": [
+    {
+      "id": 1,
+      "nome": "Maria da Silva",
+      "email": "maria@email.com",
+      "telefone": "11999999999",
+      "criadoEm": "2026-09-10T14:30:00",
+      "atualizadoEm": "2026-09-10T14:30:00"
+    }
+  ],
+  "page": 0,
+  "size": 50,
+  "totalElements": 1,
+  "totalPages": 1
+}
 ```
 
-A listagem atual não possui paginação nem filtros.
+**Mudança de contrato:** a resposta deixou de ser `Cliente[]`. O frontend deve ler `resposta.content` e usar os metadados para navegar. `size` é o tamanho solicitado; `totalElements` e `totalPages` consideram os filtros. Sem resultados, retorna `content: []` e totais zero. Uma página além da última também retorna `200 OK` com `content: []`.
+
+```ts
+type ClientePaginaResponse = {
+  content: Cliente[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+};
+
+const filtros = new URLSearchParams({ nome: "maria", page: "0", size: "50" });
+const paginaClientes = await chamarApi<ClientePaginaResponse>(`/clientes?${filtros}`);
+const clientes = paginaClientes.content;
+const temProximaPagina = paginaClientes.page + 1 < paginaClientes.totalPages;
+```
+
+Use `URLSearchParams` para codificar os valores, omita filtros não preenchidos e retorne para `page=0` ao alterar a pesquisa.
+
+**Possíveis erros:** `400 Bad Request` para paginação inválida, datas malformadas, intervalo invertido ou dia único combinado com intervalo do mesmo campo; `403 Forbidden` para sessão ausente/inválida ou perfil sem acesso. Conflitos de datas e paginação seguem o formato de regra de negócio, por exemplo:
+
+```json
+{
+  "status": "400",
+  "mensagem": "Informe criadoEm ou seu intervalo, nunca ambos"
+}
+```
+
+Erros de conversão de parâmetros podem ter corpo diferente; trate também o status HTTP. `GET /clientes/{id}` mantém seu contrato de resposta individual.
 
 ### Buscar cliente por ID
 

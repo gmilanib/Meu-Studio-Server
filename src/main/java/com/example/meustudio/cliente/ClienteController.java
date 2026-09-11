@@ -13,7 +13,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
 @RequestMapping("/clientes")
@@ -24,8 +25,11 @@ public class ClienteController {
     public ClienteController(ClienteService clienteService) {this.clienteService = clienteService;}
 
     @GetMapping
-    public List<ClienteResponse> listar() {
-        return clienteService.listar();
+    public ClientePaginaResponse listar(
+            @ModelAttribute ClienteFiltro filtro,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        return clienteService.listar(filtro, page, size);
     }
 
     @GetMapping("/{id}")
