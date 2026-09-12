@@ -2,6 +2,7 @@ package com.example.meustudio.financeiro.faturamento;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.UUID;
 
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
@@ -19,9 +20,8 @@ public record FaturamentoRequest(
         @Size(max = 120, message = "Cliente deve ter no máximo 120 caracteres")
         String cliente,
 
-        @NotBlank(message = "O campo procedimento é obrigatório")
-        @Size(max = 160, message = "Procedimento deve ter no máximo 160 caracteres")
-        String procedimento,
+        @NotNull(message = "Selecione um procedimento ativo")
+        UUID procedimentoId,
 
         @NotNull(message = "O campo valor é obrigatório")
         @Positive(message = "O valor deve ser maior que zero")

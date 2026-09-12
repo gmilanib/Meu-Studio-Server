@@ -35,7 +35,7 @@ class FaturamentoConsultaTest {
     @Test
     void rejeitaPaginacaoForaDosLimitesAntesDeConsultarBanco() {
         var repository = mock(FinanceiroRepository.class);
-        var service = new FinanceiroService(repository);
+        var service = new FinanceiroService(repository, null);
         var filtro = filtro(null, null, null);
         assertThrows(BusinessException.class, () -> service.listar(filtro, -1, 50));
         assertThrows(BusinessException.class, () -> service.listar(filtro, 0, 0));
@@ -56,7 +56,7 @@ class FaturamentoConsultaTest {
             assertEquals("dataFaturamento: DESC,fatID: DESC", pageable.getSort().toString().replace(", ", ","));
             return new PageImpl<>(List.of(faturamento), pageable, 51);
         });
-        var resultado = new FinanceiroService(repository).listar(filtro(null, null, null), 1, 50);
+        var resultado = new FinanceiroService(repository, null).listar(filtro(null, null, null), 1, 50);
         assertEquals(51, resultado.totalElements());
         assertEquals(2, resultado.totalPages());
         assertEquals("Maria", resultado.content().getFirst().cliente());

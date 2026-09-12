@@ -29,6 +29,12 @@ public class Faturamento {
     @Column(nullable = false, length = 160)
     private String procedimento;
 
+    @Column(name = "procedimento_id")
+    private UUID procedimentoId;
+
+    public UUID getProcedimentoId() { return procedimentoId; }
+    public void setProcedimentoId(UUID procedimentoId) { this.procedimentoId = procedimentoId; }
+
     @Column(nullable = false, name = "valorbrutofaturamento", precision = 12, scale = 2)
     private BigDecimal valorBrutoFaturamento;
 

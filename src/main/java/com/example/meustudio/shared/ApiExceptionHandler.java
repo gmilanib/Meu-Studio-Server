@@ -13,6 +13,12 @@ import java.util.Map;
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
+    @ExceptionHandler({org.springframework.http.converter.HttpMessageNotReadableException.class,
+            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class})
+    public ResponseEntity<Map<String, String>> handleMalformedRequest(Exception exception) {
+        return build(HttpStatus.BAD_REQUEST, "Dados inválidos. Verifique os tipos dos campos e os identificadores informados.");
+    }
+
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<Map<String, String>> handleNotFound(NotFoundException exception) {
         return build(HttpStatus.NOT_FOUND, exception.getMessage());

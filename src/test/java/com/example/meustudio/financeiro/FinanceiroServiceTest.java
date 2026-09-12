@@ -13,6 +13,10 @@ import org.junit.jupiter.api.Test;
 import com.example.meustudio.financeiro.faturamento.Faturamento;
 import com.example.meustudio.financeiro.faturamento.FaturamentoRequest;
 import com.example.meustudio.financeiro.faturamento.FaturamentoResponse;
+import com.example.meustudio.procedimento.Procedimento;
+import com.example.meustudio.procedimento.ProcedimentoRequest;
+import com.example.meustudio.procedimento.ProcedimentoService;
+import static org.mockito.Mockito.*;
 
 class FinanceiroServiceTest {
 
@@ -21,13 +25,18 @@ class FinanceiroServiceTest {
         UUID id = UUID.randomUUID();
         AtomicReference<Faturamento> faturamentoSalvo = new AtomicReference<>();
         FinanceiroRepository repository = criarRepository(id, faturamentoSalvo);
-        FinanceiroService financeiroService = new FinanceiroService(repository);
+        var procedimento = new Procedimento();
+        procedimento.atualizar(new ProcedimentoRequest("Design de sobrancelhas", null, new BigDecimal("180.00"), 30, null));
+        var procedimentos = mock(ProcedimentoService.class);
+        UUID procedimentoId = UUID.randomUUID();
+        when(procedimentos.exigirAtivo(procedimentoId)).thenReturn(procedimento);
+        FinanceiroService financeiroService = new FinanceiroService(repository, procedimentos);
         LocalDate data = LocalDate.of(2026, 9, 10);
         BigDecimal valor = new BigDecimal("150.00");
         FaturamentoRequest request = new FaturamentoRequest(
                 data,
                 "Maria da Silva",
-                "Design de sobrancelhas",
+                procedimentoId,
                 valor,
                 "PIX"
         );

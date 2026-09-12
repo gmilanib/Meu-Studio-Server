@@ -6,6 +6,7 @@ import org.springframework.data.domain.Sort;
 import com.example.meustudio.financeiro.faturamento.FaturamentoFiltro;
 import com.example.meustudio.financeiro.faturamento.FaturamentoPaginaResponse;
 import com.example.meustudio.shared.BusinessException;
+import com.example.meustudio.procedimento.ProcedimentoService;
 
 import com.example.meustudio.financeiro.faturamento.Faturamento;
 import com.example.meustudio.financeiro.faturamento.FaturamentoRequest;
@@ -17,17 +18,21 @@ import jakarta.transaction.Transactional;
 public class FinanceiroService {
 
     private final FinanceiroRepository financeiroRepository;
+    private final ProcedimentoService procedimentoService;
 
-    public FinanceiroService(FinanceiroRepository financeiroRepository) {
+    public FinanceiroService(FinanceiroRepository financeiroRepository, ProcedimentoService procedimentoService) {
         this.financeiroRepository = financeiroRepository;
+        this.procedimentoService = procedimentoService;
     }
 
     @Transactional
     public FaturamentoResponse criar(FaturamentoRequest request) {
+        var procedimento = procedimentoService.exigirAtivo(request.procedimentoId());
         Faturamento faturamento = new Faturamento();
         faturamento.setDataFaturamento(request.data());
         faturamento.setCliente(request.cliente());
-        faturamento.setProcedimento(request.procedimento());
+        faturamento.setProcedimento(procedimento.getNome());
+        faturamento.setProcedimentoId(procedimento.getId());
         faturamento.setValorBrutoFaturamento(request.valor());
         faturamento.setMeioDePagamento(request.meioDePagamento());
 
