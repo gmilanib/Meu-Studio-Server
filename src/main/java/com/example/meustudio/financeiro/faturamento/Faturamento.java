@@ -9,7 +9,11 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+
+import com.example.meustudio.cliente.Cliente;
 
 @Entity
 @Table(name = "faturamentos")
@@ -25,6 +29,10 @@ public class Faturamento {
 
     @Column(nullable = false, name = "clientename", length = 120)
     private String cliente;
+
+    @ManyToOne
+    @JoinColumn(name = "cliente_id")
+    private Cliente clienteCadastrado;
 
     @Column(nullable = false, length = 160)
     private String procedimento;
@@ -66,6 +74,14 @@ public class Faturamento {
 
     public void setCliente(String cliente) {
         this.cliente = cliente;
+    }
+
+    public Cliente getClienteCadastrado() {
+        return clienteCadastrado;
+    }
+
+    public void setClienteCadastrado(Cliente clienteCadastrado) {
+        this.clienteCadastrado = clienteCadastrado;
     }
 
     public String getProcedimento() {

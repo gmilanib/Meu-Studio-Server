@@ -151,6 +151,8 @@ export async function login(dados: LoginRequest): Promise<void> {
 | `DELETE` | `/clientes/{id}` | `ADMIN` ou `USER` |
 | `POST` | `/financeiro/lancar` | `ADMIN` ou `USER` |
 | `GET` | `/financeiro/faturamentos` | `ADMIN` ou `USER` |
+| `PUT` | `/financeiro/faturamentos/{id}` | `ADMIN` ou `USER` |
+| `DELETE` | `/financeiro/faturamentos/{id}` | `ADMIN` ou `USER` |
 
 ## Autenticação
 
@@ -443,7 +445,7 @@ X-XSRF-TOKEN: valor-do-token
 
 **Resposta:** `204 No Content`, sem corpo.
 
-**Possível erro:** `404 Not Found` quando o cliente não existe.
+**Possíveis erros:** `404 Not Found` quando o cliente não existe; `400 Bad Request` quando existem lançamentos financeiros vinculados. Nesse caso, altere o cliente dos lançamentos ou exclua-os antes de repetir a exclusão.
 
 ---
 
@@ -458,7 +460,7 @@ POST /financeiro/lancar
 X-XSRF-TOKEN: valor-do-token
 ```
 
-Registra uma receita já realizada pelo studio. Exige selecionar um procedimento ativo do catálogo. O servidor grava seu ID e uma cópia do nome; o valor cobrado pode diferir do preço sugerido. Registros antigos permanecem consultáveis sem vínculo. Texto livre não é mais aceito em novos lançamentos.
+Registra uma receita já realizada pelo studio. Exige selecionar um procedimento ativo do catálogo. O cliente pode ser vinculado pelo `clienteId` ou mantido como texto livre. Sem ID, o servidor associa automaticamente somente quando existe um único cliente com nome equivalente, ignorando caixa e espaços externos; nenhuma ou múltiplas correspondências preservam o texto livre. Quando há vínculo, a resposta sempre exibe o nome atual do cliente. O valor cobrado pode diferir do preço sugerido.
 
 **Corpo:**
 
@@ -466,6 +468,7 @@ Registra uma receita já realizada pelo studio. Exige selecionar um procedimento
 {
   "data": "2026-09-10",
   "cliente": "Maria da Silva",
+  "clienteId": 1,
   "procedimentoId": "6a0b8c7d-8f01-4ef2-b5b9-529ca7816a10",
   "valor": 150.00,
   "meioDePagamento": "PIX"
@@ -476,6 +479,7 @@ Registra uma receita já realizada pelo studio. Exige selecionar um procedimento
 |---|---|---|
 | `data` | `string` | Obrigatória; formato `YYYY-MM-DD`; não pode ser futura |
 | `cliente` | `string` | Obrigatório; máximo de 120 caracteres |
+| `clienteId` | `number` ou `null` | Opcional; quando informado, deve identificar um cliente existente |
 | `procedimentoId` | `string (UUID)` | Obrigatório; deve identificar um procedimento ativo |
 | `valor` | `number` | Obrigatório; maior que zero; até 10 inteiros e 2 casas decimais |
 | `meioDePagamento` | `string` | Obrigatório; máximo de 30 caracteres |
@@ -487,7 +491,9 @@ Registra uma receita já realizada pelo studio. Exige selecionar um procedimento
   "id": "2e942f54-471c-4c62-a5c6-1e877aed0373",
   "data": "2026-09-10",
   "cliente": "Maria da Silva",
+  "clienteId": 1,
   "procedimento": "Design de sobrancelhas",
+  "procedimentoId": "6a0b8c7d-8f01-4ef2-b5b9-529ca7816a10",
   "valor": 150.00,
   "meioDePagamento": "PIX"
 }
@@ -499,12 +505,13 @@ Exemplo usando o cliente TypeScript desta documentação:
 type FaturamentoRequest = {
   data: string;
   cliente: string;
+  clienteId?: number | null;
   procedimentoId: string;
   valor: number;
   meioDePagamento: string;
 };
 
-type FaturamentoResponse = Omit<FaturamentoRequest, "procedimentoId"> & {
+type FaturamentoResponse = FaturamentoRequest & {
   id: string;
   procedimento: string; // Nome histórico; permanece igual após edições no catálogo.
 };
@@ -516,6 +523,7 @@ const faturamento = await chamarApi<FaturamentoResponse>(
     body: JSON.stringify({
       data: "2026-09-10",
       cliente: "Maria da Silva",
+      clienteId: 1,
       procedimentoId: "6a0b8c7d-8f01-4ef2-b5b9-529ca7816a10",
       valor: 150.0,
       meioDePagamento: "PIX",
@@ -574,7 +582,9 @@ GET /financeiro/faturamentos?cliente=maria&procedimento=design&valor=150.00&meio
       "id": "2e942f54-471c-4c62-a5c6-1e877aed0373",
       "data": "2026-09-10",
       "cliente": "Maria da Silva",
+      "clienteId": 1,
       "procedimento": "Design de sobrancelhas",
+      "procedimentoId": "6a0b8c7d-8f01-4ef2-b5b9-529ca7816a10",
       "valor": 150.00,
       "meioDePagamento": "PIX"
     }
@@ -631,6 +641,24 @@ Erros das regras de intervalo e paginação seguem o formato de regra de negóci
 ```
 
 O corpo de erros de conversão de parâmetros pode diferir desse formato; trate também o status HTTP.
+
+### Atualizar faturamento
+
+```http
+PUT /financeiro/faturamentos/{id}
+X-XSRF-TOKEN: valor-do-token
+```
+
+Usa o mesmo corpo e as mesmas validações da criação. Todos os campos podem ser alterados. Enviar `clienteId: null` remove o vínculo e preserva `cliente` como texto livre. Retorna `200 OK` com o lançamento atualizado; retorna `404 Not Found` para lançamento, cliente ou procedimento inexistente.
+
+### Excluir faturamento
+
+```http
+DELETE /financeiro/faturamentos/{id}
+X-XSRF-TOKEN: valor-do-token
+```
+
+Exclui definitivamente o lançamento e retorna `204 No Content`. Retorna `404 Not Found` quando o lançamento não existe.
 
 ---
 
@@ -689,7 +717,7 @@ O formato do corpo dessas respostas não deve ser usado pelo frontend como contr
 - Ao receber `401` no login, informe que o usuário ou a senha são inválidos.
 - Ao receber `403`, verifique a sessão, a permissão do usuário e a presença do CSRF. Se a sessão não for mais válida, redirecione para o login.
 - O backend ainda não possui endpoint de logout nem endpoint para consultar a sessão/usuário atual.
-- O backend permite lançar e consultar faturamentos; ainda não possui endpoints para editar ou excluir faturamentos.
+- O backend permite criar, consultar, editar e excluir faturamentos.
 
 
 ## Procedimentos

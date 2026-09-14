@@ -8,4 +8,5 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import com.example.meustudio.financeiro.faturamento.Faturamento;
 
 public interface FinanceiroRepository extends JpaRepository<Faturamento, UUID>, JpaSpecificationExecutor<Faturamento> {
+    boolean existsByClienteCadastradoId(Long clienteId);
 }

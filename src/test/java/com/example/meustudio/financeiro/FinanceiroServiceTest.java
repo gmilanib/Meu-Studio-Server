@@ -16,6 +16,7 @@ import com.example.meustudio.financeiro.faturamento.FaturamentoResponse;
 import com.example.meustudio.procedimento.Procedimento;
 import com.example.meustudio.procedimento.ProcedimentoRequest;
 import com.example.meustudio.procedimento.ProcedimentoService;
+import com.example.meustudio.cliente.ClienteRepository;
 import static org.mockito.Mockito.*;
 
 class FinanceiroServiceTest {
@@ -30,12 +31,13 @@ class FinanceiroServiceTest {
         var procedimentos = mock(ProcedimentoService.class);
         UUID procedimentoId = UUID.randomUUID();
         when(procedimentos.exigirAtivo(procedimentoId)).thenReturn(procedimento);
-        FinanceiroService financeiroService = new FinanceiroService(repository, procedimentos);
+        FinanceiroService financeiroService = new FinanceiroService(repository, procedimentos, mock(ClienteRepository.class));
         LocalDate data = LocalDate.of(2026, 9, 10);
         BigDecimal valor = new BigDecimal("150.00");
         FaturamentoRequest request = new FaturamentoRequest(
                 data,
                 "Maria da Silva",
+                null,
                 procedimentoId,
                 valor,
                 "PIX"

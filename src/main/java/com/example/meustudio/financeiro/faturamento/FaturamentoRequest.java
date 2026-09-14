@@ -20,6 +20,8 @@ public record FaturamentoRequest(
         @Size(max = 120, message = "Cliente deve ter no máximo 120 caracteres")
         String cliente,
 
+        Long clienteId,
+
         @NotNull(message = "Selecione um procedimento ativo")
         UUID procedimentoId,
 

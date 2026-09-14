@@ -7,14 +7,17 @@ import org.springframework.transaction.annotation.Transactional;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import com.example.meustudio.financeiro.FinanceiroRepository;
 
 @Service
 public class ClienteService {
 
     private final ClienteRepository clienteRepository;
+    private final FinanceiroRepository financeiroRepository;
 
-    public ClienteService(ClienteRepository clienteRepository) {
+    public ClienteService(ClienteRepository clienteRepository, FinanceiroRepository financeiroRepository) {
         this.clienteRepository = clienteRepository;
+        this.financeiroRepository = financeiroRepository;
     }
 
     @Transactional(readOnly = true)
@@ -64,6 +67,9 @@ public class ClienteService {
     public void excluir(Long id) {
         if (!clienteRepository.existsById(id)) {
             throw new NotFoundException("Cliente não encontrado para o id " + id);
+        }
+        if (financeiroRepository.existsByClienteCadastradoId(id)) {
+            throw new BusinessException("Cliente possui lançamentos financeiros. Altere ou exclua esses lançamentos na aba Financeiro antes de excluir o cliente.");
         }
         clienteRepository.deleteById(id);
     }

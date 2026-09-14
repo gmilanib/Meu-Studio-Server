@@ -8,7 +8,9 @@ public record FaturamentoResponse(
         UUID id,
         LocalDate data,
         String cliente,
+        Long clienteId,
         String procedimento,
+        UUID procedimentoId,
         BigDecimal valor,
         String meioDePagamento
 ) {
@@ -16,8 +18,14 @@ public record FaturamentoResponse(
         return new FaturamentoResponse(
                 faturamento.getFatID(),
                 faturamento.getDataFaturamento(),
-                faturamento.getCliente(),
+                faturamento.getClienteCadastrado() == null
+                        ? faturamento.getCliente()
+                        : faturamento.getClienteCadastrado().getNome(),
+                faturamento.getClienteCadastrado() == null
+                        ? null
+                        : faturamento.getClienteCadastrado().getId(),
                 faturamento.getProcedimento(),
+                faturamento.getProcedimentoId(),
                 faturamento.getValorBrutoFaturamento(),
                 faturamento.getMeioDePagamento()
         );

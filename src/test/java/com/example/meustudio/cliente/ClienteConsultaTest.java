@@ -36,7 +36,7 @@ class ClienteConsultaTest {
     @Test
     void rejeitaPaginacaoInvalidaSemAcessarBanco() {
         var repository = mock(ClienteRepository.class);
-        var service = new ClienteService(repository);
+        var service = new ClienteService(repository, null);
         var filtro = filtro(null, null, null, null, null, null);
         assertThrows(BusinessException.class, () -> service.listar(filtro, -1, 50));
         assertThrows(BusinessException.class, () -> service.listar(filtro, 0, 0));
@@ -58,7 +58,7 @@ class ClienteConsultaTest {
             assertTrue(pageable.getSort().getOrderFor("id").isDescending());
             return new PageImpl<>(List.of(cliente), pageable, 51);
         });
-        var pagina = new ClienteService(repository).listar(filtro(null, null, null, null, null, null), 1, 50);
+        var pagina = new ClienteService(repository, null).listar(filtro(null, null, null, null, null, null), 1, 50);
         assertEquals("Maria", pagina.content().getFirst().nome());
         assertEquals(51, pagina.totalElements());
         assertEquals(2, pagina.totalPages());
