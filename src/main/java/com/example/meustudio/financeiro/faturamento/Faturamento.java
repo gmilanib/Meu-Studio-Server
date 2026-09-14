@@ -2,6 +2,7 @@ package com.example.meustudio.financeiro.faturamento;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
@@ -26,6 +27,9 @@ public class Faturamento {
 
     @Column(nullable = false, name = "datafaturamento")
     private LocalDate dataFaturamento;
+
+    @Column(nullable = false, name = "horariofaturamento")
+    private LocalTime horarioFaturamento;
 
     @Column(nullable = false, name = "clientename", length = 120)
     private String cliente;
@@ -66,6 +70,14 @@ public class Faturamento {
 
     public void setDataFaturamento(LocalDate dataFaturamento) {
         this.dataFaturamento = dataFaturamento;
+    }
+
+    public LocalTime getHorarioFaturamento() {
+        return horarioFaturamento;
+    }
+
+    public void setHorarioFaturamento(LocalTime horarioFaturamento) {
+        this.horarioFaturamento = horarioFaturamento;
     }
 
     public String getCliente() {

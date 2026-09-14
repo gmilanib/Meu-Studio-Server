@@ -9,6 +9,10 @@ import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.Optional;
 import java.util.List;
 import java.util.UUID;
@@ -23,6 +27,7 @@ import com.example.meustudio.procedimento.Procedimento;
 import com.example.meustudio.procedimento.ProcedimentoRequest;
 import com.example.meustudio.procedimento.ProcedimentoService;
 import com.example.meustudio.shared.NotFoundException;
+import com.example.meustudio.shared.BusinessException;
 
 class FinanceiroManutencaoTest {
 
@@ -106,6 +111,35 @@ class FinanceiroManutencaoTest {
         assertThrows(NotFoundException.class, () -> service.excluir(ausente));
     }
 
+    @Test
+    void assumeHorarioAtualDeSaoPauloQuandoNaoInformado() {
+        var faturamentos = mock(FinanceiroRepository.class);
+        var procedimentos = mock(ProcedimentoService.class);
+        var procedimento = procedimento();
+        when(procedimentos.exigirAtivo(procedimento.getId())).thenReturn(procedimento);
+        when(faturamentos.save(org.mockito.ArgumentMatchers.any())).thenAnswer(invocation -> invocation.getArgument(0));
+        var clock = Clock.fixed(Instant.parse("2026-09-14T21:37:42Z"), ZoneId.of("UTC"));
+        var service = new FinanceiroService(faturamentos, procedimentos, mock(ClienteRepository.class), clock);
+
+        var resposta = service.criar(new FaturamentoRequest(LocalDate.of(2026, 9, 14), null,
+                "Maria", null, procedimento.getId(), new BigDecimal("150.00"), "PIX"));
+
+        assertEquals(LocalTime.of(18, 37), resposta.horario());
+    }
+
+    @Test
+    void rejeitaDataEHorarioFuturos() {
+        var clock = Clock.fixed(Instant.parse("2026-09-14T21:00:00Z"), ZoneId.of("UTC"));
+        var service = new FinanceiroService(mock(FinanceiroRepository.class), mock(ProcedimentoService.class),
+                mock(ClienteRepository.class), clock);
+        var futuroNoMesmoDia = new FaturamentoRequest(LocalDate.of(2026, 9, 14), LocalTime.of(18, 1),
+                "Maria", null, UUID.randomUUID(), new BigDecimal("150.00"), "PIX");
+
+        var erro = assertThrows(BusinessException.class, () -> service.criar(futuroNoMesmoDia));
+
+        assertEquals("A data e o horário do faturamento não podem estar no futuro", erro.getMessage());
+    }
+
     private Procedimento procedimento() {
         var procedimento = new Procedimento();
         procedimento.atualizar(new ProcedimentoRequest("Design", null, new BigDecimal("150.00"), 30, null));
@@ -113,7 +147,7 @@ class FinanceiroManutencaoTest {
     }
 
     private FaturamentoRequest request(String cliente, Long clienteId, UUID procedimentoId) {
-        return new FaturamentoRequest(LocalDate.of(2026, 9, 10), cliente, clienteId, procedimentoId,
+        return new FaturamentoRequest(LocalDate.of(2026, 9, 10), LocalTime.of(18, 30), cliente, clienteId, procedimentoId,
                 new BigDecimal("150.00"), "PIX");
     }
 }

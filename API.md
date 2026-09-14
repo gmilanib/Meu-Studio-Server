@@ -467,6 +467,7 @@ Registra uma receita já realizada pelo studio. Exige selecionar um procedimento
 ```json
 {
   "data": "2026-09-10",
+  "horario": "18:45",
   "cliente": "Maria da Silva",
   "clienteId": 1,
   "procedimentoId": "6a0b8c7d-8f01-4ef2-b5b9-529ca7816a10",
@@ -478,6 +479,7 @@ Registra uma receita já realizada pelo studio. Exige selecionar um procedimento
 | Campo | Tipo | Regras |
 |---|---|---|
 | `data` | `string` | Obrigatória; formato `YYYY-MM-DD`; não pode ser futura |
+| `horario` | `string` ou `null` | Formato `HH:mm`; quando omitido, assume o horário atual de `America/Sao_Paulo`; combinado à data, não pode representar um instante futuro |
 | `cliente` | `string` | Obrigatório; máximo de 120 caracteres |
 | `clienteId` | `number` ou `null` | Opcional; quando informado, deve identificar um cliente existente |
 | `procedimentoId` | `string (UUID)` | Obrigatório; deve identificar um procedimento ativo |
@@ -490,6 +492,7 @@ Registra uma receita já realizada pelo studio. Exige selecionar um procedimento
 {
   "id": "2e942f54-471c-4c62-a5c6-1e877aed0373",
   "data": "2026-09-10",
+  "horario": "18:45",
   "cliente": "Maria da Silva",
   "clienteId": 1,
   "procedimento": "Design de sobrancelhas",
@@ -504,6 +507,7 @@ Exemplo usando o cliente TypeScript desta documentação:
 ```ts
 type FaturamentoRequest = {
   data: string;
+  horario?: string | null;
   cliente: string;
   clienteId?: number | null;
   procedimentoId: string;
@@ -522,6 +526,7 @@ const faturamento = await chamarApi<FaturamentoResponse>(
     method: "POST",
     body: JSON.stringify({
       data: "2026-09-10",
+      horario: "18:45",
       cliente: "Maria da Silva",
       clienteId: 1,
       procedimentoId: "6a0b8c7d-8f01-4ef2-b5b9-529ca7816a10",
@@ -562,7 +567,7 @@ Regras de consulta:
 - O intervalo inclui os dois dias limites. É possível informar somente o início ou somente o fim.
 - `dataInicio` não pode ser posterior a `dataFim`.
 - Filtros textuais em branco são ignorados; espaços nas extremidades são removidos. `%` e `_` são tratados como texto literal na busca por trechos.
-- Sem filtros, retorna os registros paginados. A ordenação é fixa: data decrescente e identificador decrescente como desempate.
+- Sem filtros, retorna os registros paginados. A ordenação é fixa: data, horário e identificador, todos em ordem decrescente.
 - Uma consulta sem resultados ou uma página além da última retorna `200 OK` com `content: []`.
 - O filtro `cliente` pesquisa o nome armazenado no lançamento, não um identificador de cliente.
 
@@ -581,6 +586,7 @@ GET /financeiro/faturamentos?cliente=maria&procedimento=design&valor=150.00&meio
     {
       "id": "2e942f54-471c-4c62-a5c6-1e877aed0373",
       "data": "2026-09-10",
+      "horario": "18:45",
       "cliente": "Maria da Silva",
       "clienteId": 1,
       "procedimento": "Design de sobrancelhas",

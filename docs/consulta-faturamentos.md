@@ -21,7 +21,7 @@ Não combine `data` com `dataInicio` ou `dataFim`. Um limite do intervalo pode s
 Intervalos invertidos e paginação inválida retornam HTTP 400.
 
 `page` começa em zero (padrão: 0). `size` aceita de 1 a 50 (padrão: 50).
-Sem filtros, retorna todos os faturamentos, paginados. Ordenação: data decrescente, com identificador decrescente como desempate.
+Sem filtros, retorna todos os faturamentos, paginados. Ordenação: data, horário e identificador, todos em ordem decrescente.
 
 Exemplo: `/financeiro/faturamentos?cliente=maria&dataInicio=2026-09-01&dataFim=2026-09-10&page=0&size=50`
 
@@ -35,4 +35,4 @@ Exemplo: `/financeiro/faturamentos?cliente=maria&dataInicio=2026-09-01&dataFim=2
 }
 ```
 
-Cada item de `content` contém `id`, `data`, `cliente`, `procedimento`, `valor` e `meioDePagamento`, como na resposta de lançamento.
+Cada item de `content` contém `id`, `data`, `horario`, `cliente`, `procedimento`, `valor` e `meioDePagamento`, como na resposta de lançamento. O horário usa o formato `HH:mm`.

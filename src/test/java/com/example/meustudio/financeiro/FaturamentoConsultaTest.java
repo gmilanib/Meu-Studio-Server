@@ -53,7 +53,8 @@ class FaturamentoConsultaTest {
             Pageable pageable = invocation.getArgument(1);
             assertEquals(1, pageable.getPageNumber());
             assertEquals(50, pageable.getPageSize());
-            assertEquals("dataFaturamento: DESC,fatID: DESC", pageable.getSort().toString().replace(", ", ","));
+            assertEquals("dataFaturamento: DESC,horarioFaturamento: DESC,fatID: DESC",
+                    pageable.getSort().toString().replace(", ", ","));
             return new PageImpl<>(List.of(faturamento), pageable, 51);
         });
         var resultado = new FinanceiroService(repository, null, null).listar(filtro(null, null, null), 1, 50);

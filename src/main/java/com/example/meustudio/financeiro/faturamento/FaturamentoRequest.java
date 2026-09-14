@@ -2,6 +2,7 @@ package com.example.meustudio.financeiro.faturamento;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.UUID;
 
 import jakarta.validation.constraints.Digits;
@@ -11,10 +12,15 @@ import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 public record FaturamentoRequest(
         @NotNull(message = "O campo data é obrigatório")
         @PastOrPresent(message = "A data do faturamento não pode estar no futuro")
         LocalDate data,
+
+        @JsonFormat(pattern = "HH:mm")
+        LocalTime horario,
 
         @NotBlank(message = "O campo cliente é obrigatório")
         @Size(max = 120, message = "Cliente deve ter no máximo 120 caracteres")

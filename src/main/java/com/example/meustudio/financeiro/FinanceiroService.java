@@ -1,5 +1,11 @@
 package com.example.meustudio.financeiro;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -20,15 +26,24 @@ import jakarta.transaction.Transactional;
 @Service
 public class FinanceiroService {
 
+    private static final ZoneId FUSO_HORARIO = ZoneId.of("America/Sao_Paulo");
+
     private final FinanceiroRepository financeiroRepository;
     private final ProcedimentoService procedimentoService;
     private final ClienteRepository clienteRepository;
+    private final Clock clock;
 
     public FinanceiroService(FinanceiroRepository financeiroRepository, ProcedimentoService procedimentoService,
             ClienteRepository clienteRepository) {
+        this(financeiroRepository, procedimentoService, clienteRepository, Clock.system(FUSO_HORARIO));
+    }
+
+    FinanceiroService(FinanceiroRepository financeiroRepository, ProcedimentoService procedimentoService,
+            ClienteRepository clienteRepository, Clock clock) {
         this.financeiroRepository = financeiroRepository;
         this.procedimentoService = procedimentoService;
         this.clienteRepository = clienteRepository;
+        this.clock = clock;
     }
 
     @Transactional
@@ -55,6 +70,13 @@ public class FinanceiroService {
     }
 
     private void atualizarDados(Faturamento faturamento, FaturamentoRequest request) {
+        ZonedDateTime agora = ZonedDateTime.now(clock).withZoneSameInstant(FUSO_HORARIO);
+        LocalTime horario = request.horario() == null
+                ? agora.toLocalTime().withSecond(0).withNano(0)
+                : request.horario();
+        if (LocalDateTime.of(request.data(), horario).isAfter(agora.toLocalDateTime())) {
+            throw new BusinessException("A data e o horário do faturamento não podem estar no futuro");
+        }
         var procedimento = procedimentoService.exigirAtivo(request.procedimentoId());
         Cliente clienteCadastrado;
         if (request.clienteId() != null) {
@@ -65,6 +87,7 @@ public class FinanceiroService {
             clienteCadastrado = correspondencias.size() == 1 ? correspondencias.getFirst() : null;
         }
         faturamento.setDataFaturamento(request.data());
+        faturamento.setHorarioFaturamento(horario);
         faturamento.setCliente(clienteCadastrado == null ? request.cliente().strip() : clienteCadastrado.getNome());
         faturamento.setClienteCadastrado(clienteCadastrado);
         faturamento.setProcedimento(procedimento.getNome());
@@ -78,7 +101,8 @@ public class FinanceiroService {
         if (page < 0 || size < 1 || size > 50) {
             throw new BusinessException("page deve ser maior ou igual a zero e size deve estar entre 1 e 50");
         }
-        var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "dataFaturamento", "fatID"));
+        var pageable = PageRequest.of(page, size,
+                Sort.by(Sort.Direction.DESC, "dataFaturamento", "horarioFaturamento", "fatID"));
         var resultado = financeiroRepository.findAll(filtro.toSpecification(), pageable)
                 .map(FaturamentoResponse::fromEntity);
         return FaturamentoPaginaResponse.fromPage(resultado);

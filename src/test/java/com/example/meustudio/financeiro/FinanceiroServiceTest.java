@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.lang.reflect.Proxy;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -33,9 +34,11 @@ class FinanceiroServiceTest {
         when(procedimentos.exigirAtivo(procedimentoId)).thenReturn(procedimento);
         FinanceiroService financeiroService = new FinanceiroService(repository, procedimentos, mock(ClienteRepository.class));
         LocalDate data = LocalDate.of(2026, 9, 10);
+        LocalTime horario = LocalTime.of(18, 45);
         BigDecimal valor = new BigDecimal("150.00");
         FaturamentoRequest request = new FaturamentoRequest(
                 data,
+                horario,
                 "Maria da Silva",
                 null,
                 procedimentoId,
@@ -47,12 +50,14 @@ class FinanceiroServiceTest {
 
         Faturamento salvo = faturamentoSalvo.get();
         assertEquals(data, salvo.getDataFaturamento());
+        assertEquals(horario, salvo.getHorarioFaturamento());
         assertEquals("Maria da Silva", salvo.getCliente());
         assertEquals("Design de sobrancelhas", salvo.getProcedimento());
         assertEquals(valor, salvo.getValorBrutoFaturamento());
         assertEquals("PIX", salvo.getMeioDePagamento());
         assertEquals(id, response.id());
         assertEquals(data, response.data());
+        assertEquals(horario, response.horario());
         assertEquals("Maria da Silva", response.cliente());
         assertEquals("Design de sobrancelhas", response.procedimento());
         assertEquals(valor, response.valor());

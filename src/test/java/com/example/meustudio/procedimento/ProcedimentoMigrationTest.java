@@ -3,6 +3,7 @@ package com.example.meustudio.procedimento;
 import static org.junit.jupiter.api.Assertions.*;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.time.LocalTime;
 import java.util.UUID;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
@@ -22,11 +23,12 @@ class ProcedimentoMigrationTest {
                 statement.execute("SET search_path TO " + schema);
                 statement.execute("INSERT INTO faturamentos (fatid, datafaturamento, clientename, procedimento, valorbrutofaturamento, meiopagamento) VALUES ('00000000-0000-0000-0000-000000000001', CURRENT_DATE, 'Maria', 'Serviço antigo', 120.50, 'PIX')");
                 Flyway.configure().dataSource(url, user, password).schemas(schema).defaultSchema(schema).load().migrate();
-                try (var result = statement.executeQuery("SELECT procedimento, valorbrutofaturamento, procedimento_id FROM faturamentos")) {
+                try (var result = statement.executeQuery("SELECT procedimento, valorbrutofaturamento, procedimento_id, horariofaturamento FROM faturamentos")) {
                     assertTrue(result.next());
                     assertEquals("Serviço antigo", result.getString(1));
                     assertEquals("120.50", result.getBigDecimal(2).toPlainString());
                     assertNull(result.getObject(3));
+                    assertEquals(LocalTime.MIDNIGHT, result.getTime(4).toLocalTime());
                 }
                 statement.execute("INSERT INTO procedimentos (id, nome, preco, duracao_minutos) VALUES ('00000000-0000-0000-0000-000000000002', 'Design', 100, 30)");
                 SQLException exception = assertThrows(SQLException.class, () -> statement.execute("INSERT INTO procedimentos (id, nome, preco, duracao_minutos) VALUES ('00000000-0000-0000-0000-000000000003', ' design ', 100, 30)"));
