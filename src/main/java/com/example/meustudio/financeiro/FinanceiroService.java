@@ -6,6 +6,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -33,6 +34,7 @@ public class FinanceiroService {
     private final ClienteRepository clienteRepository;
     private final Clock clock;
 
+    @Autowired
     public FinanceiroService(FinanceiroRepository financeiroRepository, ProcedimentoService procedimentoService,
             ClienteRepository clienteRepository) {
         this(financeiroRepository, procedimentoService, clienteRepository, Clock.system(FUSO_HORARIO));
